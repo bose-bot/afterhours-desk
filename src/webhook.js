@@ -32,21 +32,21 @@ export function extractToolCalls(message) {
   return [];
 }
 
-function runTool(call, client, { db, now }) {
+async function runTool(call, client, { db, now }) {
   const schedule = client.details.schedule;
 
   if (call.name === 'check_availability') {
-    const slots = openSlots(schedule, { now: now(), booked: db.bookedSlotStarts(client.id) });
+    const slots = openSlots(schedule, { now: now(), booked: await db.bookedSlotStarts(client.id) });
     if (!slots.length) return { slots: [], note: 'No open windows in the next week. Take a message so the team can call back.' };
     return { slots };
   }
 
   if (call.name === 'book_appointment') {
     const a = call.args;
-    const valid = openSlots(schedule, { now: now(), booked: db.bookedSlotStarts(client.id), limit: 200 });
+    const valid = openSlots(schedule, { now: now(), booked: await db.bookedSlotStarts(client.id), limit: 200 });
     const slot = valid.find((s) => s.slot_start === clip(a.slot_start, 40));
     if (!slot) return { booked: false, reason: 'That window is not available. Call check_availability and offer new times.' };
-    const saved = db.addBooking({
+    const saved = await db.addBooking({
       clientId: client.id, kind: 'booking', slotStart: slot.slot_start, slotLabel: slot.label,
       callerName: clip(a.name, 120), callerPhone: clip(a.phone, 40), address: clip(a.address), issue: clip(a.issue, 500),
       urgency: URGENCIES.includes(a.urgency) ? a.urgency : 'Routine', callId: call.callId,
@@ -57,7 +57,7 @@ function runTool(call, client, { db, now }) {
 
   if (call.name === 'take_message') {
     const a = call.args;
-    db.addBooking({
+    await db.addBooking({
       clientId: client.id, kind: 'message', callerName: clip(a.name, 120), callerPhone: clip(a.phone, 40),
       issue: clip(a.issue, 500), urgency: URGENCIES.includes(a.urgency) ? a.urgency : 'Routine', callId: call.callId,
     });
@@ -72,21 +72,21 @@ export function createWebhookHandler({ db, mailer, config, logger = console, now
     if (!isAuthorized(req, config.webhookSecret)) return res.status(401).json({ error: 'unauthorized' });
 
     const message = req.body?.message || {};
-    const client = db.getClient(String(req.query.client || ''));
+    const client = await db.getClient(String(req.query.client || ''));
     const callId = message.call?.id || null;
 
     if (message.type === 'tool-calls') {
       const calls = extractToolCalls(message);
-      const results = calls.map((c) => {
+      const results = (await Promise.all(calls.map(async (c) => {
         if (!c.id) return null;
         if (!client) return { toolCallId: c.id, result: JSON.stringify({ error: 'This line is not set up. Take a message.' }) };
         try {
-          return { toolCallId: c.id, result: JSON.stringify(runTool({ ...c, callId }, client, { db, now })) };
+          return { toolCallId: c.id, result: JSON.stringify(await runTool({ ...c, callId }, client, { db, now })) };
         } catch (e) {
           logger.error(`[webhook] tool ${c.name} failed: ${e.message}`);
           return { toolCallId: c.id, result: JSON.stringify({ error: 'Something went wrong. Take a message instead.' }) };
         }
-      }).filter(Boolean);
+      }))).filter(Boolean);
       // Vapi expects HTTP 200 even when a tool fails.
       return res.status(200).json({ results });
     }
@@ -95,9 +95,9 @@ export function createWebhookHandler({ db, mailer, config, logger = console, now
       const summary = clip(message.analysis?.summary ?? message.summary, 4000);
       const transcript = clip(message.artifact?.transcript ?? message.transcript, 50_000);
       const callerPhone = clip(message.call?.customer?.number ?? message.customer?.number, 40);
-      db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80) });
+      await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80) });
 
-      const items = db.listBookings(client.id).filter((b) => b.call_id === callId);
+      const items = (await db.listBookings(client.id)).filter((b) => b.call_id === callId);
       const lines = items.map((b) => b.kind === 'booking'
         ? `BOOKED ${b.slot_label}: ${b.caller_name} ${b.caller_phone} | ${b.address} | ${b.issue} [${b.urgency}]`
         : `MESSAGE [${b.urgency}]: ${b.caller_name || 'Unknown'} ${b.caller_phone || callerPhone} | ${b.issue}`);

@@ -21,6 +21,9 @@ function rateLimiter(perHour) {
   };
 }
 
+// Express 4 doesn't catch errors from async handlers; this passes them to the error handler.
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
 function publicView(c) {
   return { id: c.id, business: c.business, status: c.status, phoneNumber: c.phoneNumber };
 }
@@ -49,7 +52,7 @@ export function createApp(deps) {
   app.get('/healthz', (_req, res) => res.json({ ok: true }));
 
   // ---- Public sign-up ----
-  app.post('/api/signup', (req, res) => {
+  app.post('/api/signup', wrap(async (req, res) => {
     const body = req.body || {};
     if (body.website) return res.status(202).json({ ok: true }); // honeypot: bots fill hidden fields
 
@@ -57,20 +60,20 @@ export function createApp(deps) {
     if (!check.ok) return res.status(400).json({ ok: false, errors: check.errors });
     const v = check.value;
 
-    const existing = db.findClientByEmail(v.email);
+    const existing = await db.findClientByEmail(v.email);
     if (existing && existing.status !== 'failed') {
       return res.status(409).json({ ok: false, errors: { email: 'This email already has a receptionist. Check your inbox, or reply to our email to make changes.' } });
     }
     if (!allowSignup(req.ip || 'unknown')) {
       return res.status(429).json({ ok: false, errors: { form: 'Too many sign-ups from this network. Try again in an hour.' } });
     }
-    if (db.countLiveClients() >= config.maxClients) {
+    if (await db.countLiveClients() >= config.maxClients) {
       return res.status(503).json({ ok: false, errors: { form: 'We are at capacity right now. Email us and we will add you to the waitlist.' } });
     }
 
     const { business, contact, email, phone, ...rest } = v;
     const status = config.provisionMode === 'approval' ? 'pending_approval' : 'provisioning';
-    const client = db.createClient({ status, business, contact, email, phone, details: rest });
+    const client = await db.createClient({ status, business, contact, email, phone, details: rest });
 
     if (status === 'provisioning') runInBackground(() => provisionClient(client.id, deps));
     else runInBackground(() => deps.mailer.send({
@@ -80,17 +83,17 @@ export function createApp(deps) {
     }));
 
     return res.status(202).json({ ok: true, client: publicView(client) });
-  });
+  }));
 
   // Lets the sign-up page show the new number as soon as it exists. The id is an unguessable UUID.
-  app.get('/api/signup/:id', (req, res) => {
-    const c = db.getClient(req.params.id);
+  app.get('/api/signup/:id', wrap(async (req, res) => {
+    const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ ok: false });
     return res.json({ ok: true, client: publicView(c) });
-  });
+  }));
 
   // ---- Vapi webhook ----
-  app.post('/api/vapi/webhook', createWebhookHandler(deps));
+  app.post('/api/vapi/webhook', wrap(createWebhookHandler(deps)));
 
   // ---- Admin (Bearer ADMIN_TOKEN) ----
   const admin = express.Router();
@@ -100,20 +103,20 @@ export function createApp(deps) {
     if (!want.length || given.length !== want.length || !timingSafeEqual(given, want)) return res.status(401).json({ error: 'unauthorized' });
     next();
   });
-  admin.get('/clients', (_req, res) => res.json({ clients: db.listClients() }));
-  admin.get('/clients/:id', (req, res) => {
-    const c = db.getClient(req.params.id);
+  admin.get('/clients', wrap(async (_req, res) => res.json({ clients: await db.listClients() })));
+  admin.get('/clients/:id', wrap(async (req, res) => {
+    const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'not found' });
-    res.json({ client: c, bookings: db.listBookings(c.id), calls: db.listCalls(c.id) });
-  });
-  const startSetup = (allowed) => (req, res) => {
-    const c = db.getClient(req.params.id);
+    res.json({ client: c, bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
+  }));
+  const startSetup = (allowed) => wrap(async (req, res) => {
+    const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'not found' });
     if (!allowed.includes(c.status)) return res.status(409).json({ error: `Client is ${c.status}.` });
-    db.updateClient(c.id, { status: 'provisioning' });
+    await db.updateClient(c.id, { status: 'provisioning' });
     runInBackground(() => provisionClient(c.id, deps));
     res.status(202).json({ ok: true });
-  };
+  });
   admin.post('/clients/:id/approve', startSetup(['pending_approval']));
   admin.post('/clients/:id/retry', startSetup(['failed']));
   admin.post('/clients/:id/refresh-number', async (req, res) => {

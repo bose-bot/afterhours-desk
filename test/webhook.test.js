@@ -50,7 +50,7 @@ test('a caller can check times, book one, and the same window cannot be double-b
     const made = await tool('book_appointment', { ...args, slot_start: '2026-10-24T12:00:00.000Z' });
     assert.equal(made.booked, false, 'Saturday is closed, so invented times are refused');
 
-    assert.equal(t.db.listBookings(id).length, 1);
+    assert.equal((await t.db.listBookings(id)).length, 1);
   } finally { await t.close(); }
 });
 
@@ -68,7 +68,7 @@ test('messages are saved and the owner is emailed a summary when the call ends',
     assert.equal(end.status, 200);
     await new Promise((r) => setImmediate(r));
 
-    const [call] = t.db.listCalls(id);
+    const [call] = await t.db.listCalls(id);
     assert.equal(call.summary, 'Caller reported a gas smell; told to leave and call 911.');
     assert.equal(t.mailer.sent.length, 1);
     assert.equal(t.mailer.sent[0].to, 'pat@maplerow.example');

@@ -6,7 +6,7 @@ const config = loadConfig();
 if (config.adminToken) {
   console.log('ADMIN_TOKEN is set in the environment; that value is the admin token.');
 } else {
-  const db = openDb(config.databasePath);
-  console.log(db.getSetting('admin_token') || 'No admin token yet. Start the server once to create it.');
-  db.close();
+  const db = await openDb(config.databaseUrl ? { url: config.databaseUrl } : { path: config.databasePath });
+  console.log((await db.getSetting('admin_token')) || 'No admin token yet. Start the server once to create it.');
+  await db.close();
 }

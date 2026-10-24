@@ -12,7 +12,7 @@ test('sign-up goes live automatically: assistant, number, emails', async () => {
     const id = r.json.client.id;
     await t.idle();
 
-    const client = t.db.getClient(id);
+    const client = await t.db.getClient(id);
     assert.equal(client.status, 'active');
     assert.equal(client.phoneNumber, '+15135550199');
     assert.equal(client.phone, '+15135550142');
@@ -41,7 +41,7 @@ test('a number assigned late is picked up by polling', async () => {
   try {
     const r = await t.req('POST', '/api/signup', { body: validSignup() });
     await t.idle();
-    assert.equal(t.db.getClient(r.json.client.id).phoneNumber, '+15135550177');
+    assert.equal((await t.db.getClient(r.json.client.id)).phoneNumber, '+15135550177');
   } finally { await t.close(); }
 });
 
@@ -53,7 +53,7 @@ test('failed number step rolls back the assistant, alerts the operator, and can 
     const id = r.json.client.id;
     await t.idle();
 
-    let c = t.db.getClient(id);
+    let c = await t.db.getClient(id);
     assert.equal(c.status, 'failed');
     assert.match(c.error, /no numbers available/);
     assert.equal(c.vapiAssistantId, null);
@@ -63,7 +63,7 @@ test('failed number step rolls back the assistant, alerts the operator, and can 
     vapi.failPhone = false;
     assert.equal((await t.req('POST', `/api/admin/clients/${id}/retry`, { headers: auth })).status, 202);
     await t.idle();
-    c = t.db.getClient(id);
+    c = await t.db.getClient(id);
     assert.equal(c.status, 'active');
     assert.ok(c.phoneNumber);
   } finally { await t.close(); }
@@ -75,13 +75,13 @@ test('approval mode waits for the operator', async () => {
     const r = await t.req('POST', '/api/signup', { body: validSignup() });
     const id = r.json.client.id;
     await t.idle();
-    assert.equal(t.db.getClient(id).status, 'pending_approval');
+    assert.equal((await t.db.getClient(id)).status, 'pending_approval');
     assert.equal(t.vapi.calls.length, 0);
     assert.match(t.mailer.sent[0].subject, /Approve new sign-up/);
 
     assert.equal((await t.req('POST', `/api/admin/clients/${id}/approve`, { headers: auth })).status, 202);
     await t.idle();
-    assert.equal(t.db.getClient(id).status, 'active');
+    assert.equal((await t.db.getClient(id)).status, 'active');
   } finally { await t.close(); }
 });
 
@@ -94,7 +94,7 @@ test('sign-up guards: validation, honeypot, duplicates, rate limit, capacity', a
 
     const bot = await t.req('POST', '/api/signup', { body: validSignup({ website: 'spam.example' }) });
     assert.equal(bot.status, 202);
-    assert.equal(t.db.listClients().length, 0, 'honeypot submissions are dropped');
+    assert.equal((await t.db.listClients()).length, 0, 'honeypot submissions are dropped');
 
     assert.equal((await t.req('POST', '/api/signup', { body: validSignup() })).status, 202);
     assert.equal((await t.req('POST', '/api/signup', { body: validSignup() })).status, 409);

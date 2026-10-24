@@ -10,8 +10,9 @@ import { ensureSecrets } from './secrets.js';
 const listen = (app, cb) => (process.env.HOST ? app.listen(config.port, process.env.HOST, cb) : app.listen(config.port, cb));
 
 const config = loadConfig();
-const db = openDb(config.databasePath);
-ensureSecrets(config, db);
+const db = await openDb(config.databaseUrl ? { url: config.databaseUrl } : { path: config.databasePath });
+await ensureSecrets(config, db);
+console.log(`Storage: ${db.kind === 'postgres' ? 'Postgres (DATABASE_URL)' : `SQLite file at ${config.databasePath}`}`);
 
 const problems = configProblems(config);
 let server;
@@ -42,5 +43,5 @@ if (problems.length) {
 server.on('error', (e) => { console.error(`Server failed to start: ${e.message}`); process.exit(1); });
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
-  process.on(sig, () => server.close(() => { db.close(); process.exit(0); }));
+  process.on(sig, () => server.close(async () => { await db.close(); process.exit(0); }));
 }

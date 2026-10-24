@@ -62,16 +62,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  */
 export async function provisionClient(clientId, deps) {
   const { db, vapi, mailer, config, logger = console, numberPollDelayMs = 3000 } = deps;
-  let client = db.getClient(clientId);
+  let client = await db.getClient(clientId);
   if (!client) throw new Error(`No client ${clientId}`);
-  client = db.updateClient(clientId, { status: 'provisioning', error: null });
+  client = await db.updateClient(clientId, { status: 'provisioning', error: null });
 
   let createdAssistantNow = false;
   try {
     if (!client.vapiAssistantId) {
       const a = await vapi.createAssistant(assistantBody(config, client));
       if (!a?.id) throw new Error('Vapi did not return an assistant id.');
-      client = db.updateClient(clientId, { vapiAssistantId: a.id });
+      client = await db.updateClient(clientId, { vapiAssistantId: a.id });
       createdAssistantNow = true;
     }
 
@@ -81,25 +81,25 @@ export async function provisionClient(clientId, deps) {
       if (area) body.numberDesiredAreaCode = area;
       const p = await vapi.createPhoneNumber(body);
       if (!p?.id) throw new Error('Vapi did not return a phone number id.');
-      client = db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: p.number || null });
+      client = await db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: p.number || null });
     }
 
     // New numbers can take a moment to be assigned.
     for (let i = 0; i < 3 && !client.phoneNumber; i++) {
       await sleep(numberPollDelayMs);
       const p = await vapi.getPhoneNumber(client.vapiPhoneId);
-      if (p?.number) client = db.updateClient(clientId, { phoneNumber: p.number });
+      if (p?.number) client = await db.updateClient(clientId, { phoneNumber: p.number });
     }
 
-    client = db.updateClient(clientId, { status: 'active' });
+    client = await db.updateClient(clientId, { status: 'active' });
   } catch (err) {
     logger.error(`[provision] ${client.business} (${clientId}): ${err.message}`);
     // Don't leave an orphan assistant behind if the number step failed right after creating it.
     if (createdAssistantNow && !client.vapiPhoneId) {
-      try { await vapi.deleteAssistant(client.vapiAssistantId); client = db.updateClient(clientId, { vapiAssistantId: null }); }
+      try { await vapi.deleteAssistant(client.vapiAssistantId); client = await db.updateClient(clientId, { vapiAssistantId: null }); }
       catch (e) { logger.error(`[provision] could not remove assistant ${client.vapiAssistantId}: ${e.message}`); }
     }
-    client = db.updateClient(clientId, { status: 'failed', error: err.message.slice(0, 500) });
+    client = await db.updateClient(clientId, { status: 'failed', error: err.message.slice(0, 500) });
     await safeSend(mailer, logger, {
       to: config.mail.operatorEmail,
       subject: `Setup failed: ${client.business}`,
@@ -124,8 +124,8 @@ async function safeSend(mailer, logger, msg) {
 
 // Fetches the number again for a client whose number wasn't assigned at setup time.
 export async function refreshNumber(clientId, { db, vapi }) {
-  const client = db.getClient(clientId);
+  const client = await db.getClient(clientId);
   if (!client?.vapiPhoneId) return client;
   const p = await vapi.getPhoneNumber(client.vapiPhoneId);
-  return p?.number ? db.updateClient(clientId, { phoneNumber: p.number }) : client;
+  return p?.number ? await db.updateClient(clientId, { phoneNumber: p.number }) : client;
 }

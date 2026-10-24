@@ -18,6 +18,8 @@ export function loadConfig(env = process.env) {
     publicUrl: (env.PUBLIC_URL || env.RENDER_EXTERNAL_URL
       || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : '')).replace(/\/+$/, ''),
     databasePath: env.DATABASE_PATH || './data/afterhours.db',
+    // Postgres connection string. When set, it's used instead of the SQLite file (for hosts with no persistent disk).
+    databaseUrl: env.DATABASE_URL || env.POSTGRES_URI || '',
 
     vapi: {
       apiKey: env.VAPI_API_KEY || '',

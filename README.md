@@ -46,7 +46,19 @@ You need two free accounts first:
 
 The server generates its own secrets and detects its public address on Railway and Render, so those keys are all you paste in.
 
-### Option A: Railway (free 30-day trial)
+### Option A: Northflank (free Sandbox plan, always on)
+
+1. Sign up at northflank.com (GitHub sign-in works) and create a **project**.
+2. **Create new → Addon → PostgreSQL.** Give it a name, keep the free resources, and create it. Wait until it says running.
+3. **Create new → Service → Combined service.** Connect GitHub, pick this repo and the `main` branch, and choose **Dockerfile** as the build type. Northflank finds port 3000 from the Dockerfile; make sure it's set to **public HTTP**.
+4. In the service's **Environment** settings add `VAPI_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM` and `OPERATOR_EMAIL`.
+5. Connect the database: open the addon's **Connection details**, copy `POSTGRES_URI`, and add it to the service as `DATABASE_URL`. (Or link the addon through a **secret group**; the app also reads `POSTGRES_URI` directly.)
+6. Create the service. When it's running, copy its public address from the service overview, add it as `PUBLIC_URL` (with `https://`), and let it restart.
+7. Open the service **logs** and save the admin token printed on first start.
+
+Client data lives in Postgres, so it survives restarts and redeploys.
+
+### Option B: Railway (free 30-day trial, when sign-ups are open)
 
 1. Go to railway.com, sign in with GitHub, click **New Project → Deploy from GitHub repo**, and pick this repo. It builds from the included `Dockerfile` and `railway.toml`.
 2. In the service's **Variables** tab add `VAPI_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM` and `OPERATOR_EMAIL`.
@@ -54,7 +66,7 @@ The server generates its own secrets and detects its public address on Railway a
 4. Add a **Volume** to the service mounted at `/app/data`. Without it, your client list is wiped on every redeploy.
 5. Open **Deployments → View logs** and save the admin token printed on first start.
 
-### Option B: Render (about $7/month, always on)
+### Option C: Render (about $7/month, always on)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/bose-bot/afterhours-desk)
 
@@ -103,7 +115,7 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" https://your-app.example.com/api/ad
 | `src/webhook.js` | Answers Vapi's tool calls and stores end-of-call reports. |
 | `src/scheduling.js` | Open appointment windows, time-zone and daylight-saving aware. |
 | `src/validate.js` | Cleans and checks sign-up data. |
-| `src/db.js` | SQLite storage (Node's built-in driver). |
+| `src/db.js` | Storage: Postgres when `DATABASE_URL` is set, otherwise a SQLite file. |
 | `public/` | The marketing site and sign-up form. |
 
 Webhook security: each assistant's server URL carries a per-deployment secret token, and the server also accepts a Bearer token or `x-vapi-secret` header if you'd rather attach a Vapi credential.

@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+import pg from 'pg';
 import { openDb } from '../src/db.js';
 import { createApp } from '../src/server.js';
 import { loadConfig } from '../src/config.js';
@@ -29,6 +31,27 @@ export function fakeMailer() {
 
 export const quietLogger = { log() {}, warn() {}, error() {} };
 
+// Set TEST_DATABASE_URL to run every test against Postgres; each app gets its own throwaway database.
+const PG_ADMIN_URL = process.env.TEST_DATABASE_URL || '';
+
+export async function freshDb() {
+  if (!PG_ADMIN_URL) return { db: await openDb(':memory:'), drop: async () => {} };
+  const name = `afterhours_test_${randomBytes(6).toString('hex')}`;
+  const admin = new pg.Client({ connectionString: PG_ADMIN_URL });
+  await admin.connect();
+  await admin.query(`CREATE DATABASE ${name}`);
+  await admin.end();
+  const url = new URL(PG_ADMIN_URL); url.pathname = `/${name}`;
+  const db = await openDb({ url: url.toString() });
+  return {
+    db,
+    drop: async () => {
+      const a = new pg.Client({ connectionString: PG_ADMIN_URL });
+      await a.connect(); await a.query(`DROP DATABASE IF EXISTS ${name}`); await a.end();
+    },
+  };
+}
+
 export async function startApp({ env = {}, vapi = fakeVapi(), now } = {}) {
   const config = loadConfig({
     PUBLIC_URL: 'https://desk.example.com',
@@ -39,7 +62,7 @@ export async function startApp({ env = {}, vapi = fakeVapi(), now } = {}) {
     PROVISION_MODE: 'auto',
     ...env,
   });
-  const db = openDb(':memory:');
+  const { db, drop } = await freshDb();
   const mailer = fakeMailer();
   const app = createApp({ db, vapi, mailer, config, logger: quietLogger, numberPollDelayMs: 0, now });
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
@@ -59,7 +82,7 @@ export async function startApp({ env = {}, vapi = fakeVapi(), now } = {}) {
   return {
     app, db, vapi, mailer, config, req,
     idle: () => app.locals.idle(),
-    close: () => new Promise((r) => server.close(() => { db.close(); r(); })),
+    close: async () => { await new Promise((r) => server.close(r)); await db.close(); await drop(); },
   };
 }
 
