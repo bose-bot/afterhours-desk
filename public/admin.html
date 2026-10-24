@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Admin — AfterHours Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#F3F6F7;--surface:#FFFFFF;--surface-2:#E7EDF0;--fg:#0E1A22;--muted:#4D5D67;--line:#D2DBE0;
+  --heat:#EC7A2E;--on-heat:#1A0E05;--cool:#1E6AAB;--cool-bg:#E1EEF8;
+  --crit:#B42318;--crit-bg:#FDE7E4;--warn:#8A5A00;--warn-bg:#FFF1CC;--ok:#1C6E45;--ok-bg:#DCF2E5;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;--body:'Public Sans','Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0C1419;--surface:#142028;--surface-2:#1B2A35;--fg:#E7EDF0;--muted:#9CACB6;--line:#2A3B47;
+  --heat:#F28A3C;--cool:#67B1EA;--cool-bg:#132D42;
+  --crit:#FF9A90;--crit-bg:#3B1714;--warn:#F2C14E;--warn-bg:#36290A;--ok:#72D5A2;--ok-bg:#11301E;color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15.5px;line-height:1.55}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.02em;line-height:1.1;margin:0}
+h1{font-size:28px}h2{font-size:20px}h3{font-size:17px}
+p{margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-block:28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.spread{justify-content:space-between}
+.muted{color:var(--muted)}.hint{font-size:13.5px;color:var(--muted)}
+.mono{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;min-height:40px;border-radius:9px;background:var(--heat);color:var(--on-heat)}
+.btn.ghost{background:transparent;color:var(--fg);border:1.5px solid var(--line)}
+.btn[disabled]{opacity:.55;cursor:default}
+:focus-visible{outline:3px solid var(--cool);outline-offset:2px;border-radius:6px}
+input{font:inherit;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:9px;padding:9px 12px;min-height:42px;width:100%}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.stat b{display:block;font-family:var(--display);font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap}
+.s-active{background:var(--ok-bg);color:var(--ok)}
+.s-pending_approval{background:var(--warn-bg);color:var(--warn)}
+.s-provisioning{background:var(--cool-bg);color:var(--cool)}
+.s-failed{background:var(--crit-bg);color:var(--crit)}
+.u-Emergency{background:var(--crit-bg);color:var(--crit)}.u-Priority{background:var(--warn-bg);color:var(--warn)}.u-Routine{background:var(--ok-bg);color:var(--ok)}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+tr.sel td{background:var(--surface-2)}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.note{padding:12px 14px;border-radius:10px;background:var(--cool-bg)}
+.note.err{background:var(--crit-bg);color:var(--crit)}
+dl{margin:0;display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 14px}
+dt{color:var(--muted)}dd{margin:0;min-width:0;overflow-wrap:anywhere}
+details summary{cursor:pointer;color:var(--cool);font-weight:600}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:10px;border-radius:8px;margin:6px 0 0;max-height:280px;overflow:auto}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="row spread">
+    <div><h1>AfterHours Desk admin</h1><p class="hint">Approve shops, check setups, and see bookings and calls.</p></div>
+    <div class="row"><button class="btn ghost" id="refresh" type="button" hidden>Refresh</button><button class="btn ghost" id="logout" type="button" hidden>Sign out</button></div>
+  </div>
+
+  <form class="card" id="login" style="max-width:520px">
+    <h2>Sign in</h2>
+    <label for="token">Admin token</label>
+    <input id="token" type="password" autocomplete="current-password" placeholder="Paste the token from your server's first startup log">
+    <p class="hint">Find it in your host's logs under "Your admin token". It stays in this browser tab only.</p>
+    <div class="row"><button class="btn" type="submit">Sign in</button></div>
+    <p class="note err" id="loginErr" hidden></p>
+  </form>
+
+  <section id="app" hidden style="flex-direction:column;gap:22px">
+    <p class="note err" id="appErr" hidden></p>
+    <div class="stats">
+      <div class="stat"><span class="muted">Waiting for approval</span><b id="nPending">0</b></div>
+      <div class="stat"><span class="muted">Live</span><b id="nActive">0</b></div>
+      <div class="stat"><span class="muted">Failed setups</span><b id="nFailed">0</b></div>
+      <div class="stat"><span class="muted">All shops</span><b id="nAll">0</b></div>
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th>Shop</th><th>Contact</th><th>Status</th><th>AI phone number</th><th>Signed up</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>No shops yet. When someone fills in the sign-up form on your website, they appear here.</div>
+    </div>
+    <div id="detail" class="card" hidden></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const el = (tag, props = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') n.className = v; else if (k === 'text') n.textContent = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else n.setAttribute(k, v);
+    }
+    for (const c of kids) if (c != null) n.append(c);
+    return n;
+  };
+  const LABEL = { active: 'Live', pending_approval: 'Needs approval', provisioning: 'Setting up…', failed: 'Setup failed', paused: 'Paused' };
+  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (n || '—'); };
+  const when = (iso) => iso ? new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
+
+  let token = '';
+  try { token = sessionStorage.getItem('adminToken') || ''; } catch {}
+  let selected = null, timer = null;
+
+  async function api(method, path) {
+    const r = await fetch(path, { method, headers: { Authorization: `Bearer ${token}` } });
+    if (r.status === 401) { const e = new Error('That token was not accepted. Check you copied all of it.'); e.auth = true; throw e; }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || `Request failed (${r.status}).`);
+    return data;
+  }
+
+  function showApp(on) {
+    $('#login').hidden = on; $('#app').hidden = !on; $('#refresh').hidden = !on; $('#logout').hidden = !on;
+    $('#app').style.display = on ? 'flex' : '';
+  }
+
+  async function load() {
+    $('#appErr').hidden = true;
+    try {
+      const { clients } = await api('GET', '/api/admin/clients');
+      render(clients);
+      if (selected) openDetail(selected, true);
+      // Keep refreshing while anything is still being set up.
+      clearTimeout(timer);
+      if (clients.some((c) => c.status === 'provisioning')) timer = setTimeout(load, 4000);
+    } catch (e) {
+      if (e.auth) { signOut(e.message); return; }
+      $('#appErr').textContent = e.message; $('#appErr').hidden = false;
+    }
+  }
+
+  function render(clients) {
+    const count = (s) => clients.filter((c) => c.status === s).length;
+    $('#nPending').textContent = count('pending_approval');
+    $('#nActive').textContent = count('active');
+    $('#nFailed').textContent = count('failed');
+    $('#nAll').textContent = clients.length;
+    const tb = $('#rows'); tb.textContent = '';
+    $('#empty').hidden = clients.length > 0;
+    for (const c of clients) {
+      const actions = el('div', { class: 'row' });
+      if (c.status === 'pending_approval') actions.append(el('button', { class: 'btn', type: 'button', text: 'Approve', onclick: (ev) => act(ev, c, 'approve') }));
+      if (c.status === 'failed') actions.append(el('button', { class: 'btn', type: 'button', text: 'Retry setup', onclick: (ev) => act(ev, c, 'retry') }));
+      if (c.status === 'active' && !c.phoneNumber) actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Get number', onclick: (ev) => act(ev, c, 'refresh-number') }));
+      actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Details', onclick: () => openDetail(c.id) }));
+      tb.append(el('tr', { class: c.id === selected ? 'sel' : '' },
+        el('td', {}, el('b', { text: c.business }), el('div', { class: 'hint', text: c.details?.area || '' })),
+        el('td', {}, el('div', { text: c.contact }), el('div', { class: 'hint', text: c.email }), el('div', { class: 'mono', text: pretty(c.phone) })),
+        el('td', {}, el('span', { class: `pill s-${c.status}`, text: LABEL[c.status] || c.status }), c.error ? el('div', { class: 'hint', style: 'color:var(--crit);max-width:260px', text: c.error }) : null),
+        el('td', { class: 'mono', text: c.phoneNumber ? pretty(c.phoneNumber) : '—' }),
+        el('td', { class: 'mono', text: when(c.createdAt) }),
+        el('td', {}, actions)));
+    }
+  }
+
+  async function act(ev, c, action) {
+    const b = ev.currentTarget; b.disabled = true; b.textContent = 'Working…';
+    try { await api('POST', `/api/admin/clients/${encodeURIComponent(c.id)}/${action}`); }
+    catch (e) { $('#appErr').textContent = e.message; $('#appErr').hidden = false; }
+    await load();
+  }
+
+  async function openDetail(id, quiet) {
+    selected = id;
+    const box = $('#detail');
+    try {
+      const { client: c, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
+      box.textContent = '';
+      const d = c.details || {};
+      box.append(
+        el('div', { class: 'row spread' }, el('h2', { text: c.business }), el('button', { class: 'btn ghost', type: 'button', text: 'Close', onclick: () => { selected = null; box.hidden = true; load(); } })),
+        el('dl', {},
+          el('dt', { text: 'AI phone number' }), el('dd', { class: 'mono', text: pretty(c.phoneNumber) }),
+          el('dt', { text: 'Service area' }), el('dd', { text: d.area || '—' }),
+          el('dt', { text: 'Office / on-call' }), el('dd', { class: 'mono', text: `${pretty(d.office)} / ${pretty(d.oncall)}` }),
+          el('dt', { text: 'Fees' }), el('dd', { text: [d.fee, d.afterfee].filter(Boolean).join(' · ') || '—' }),
+          el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
+          el('dt', { text: 'Vapi assistant' }), el('dd', { class: 'mono', text: c.vapiAssistantId || '—' })),
+        el('h3', { text: `Bookings and messages (${bookings.length})` }),
+        bookings.length ? el('div', { class: 'tablebox' }, el('table', {},
+          el('thead', {}, el('tr', {}, ...['Type', 'Caller', 'Issue', 'Urgency', 'Window', 'When'].map((h) => el('th', { text: h })))),
+          el('tbody', {}, ...bookings.map((b) => el('tr', {},
+            el('td', { text: b.kind === 'booking' ? 'Booking' : 'Message' }),
+            el('td', {}, el('div', { text: b.caller_name || '—' }), el('div', { class: 'mono', text: b.caller_phone || '' }), el('div', { class: 'hint', text: b.address || '' })),
+            el('td', { text: b.issue || '—' }),
+            el('td', {}, el('span', { class: `pill u-${b.urgency || 'Routine'}`, text: b.urgency || 'Routine' })),
+            el('td', { text: b.slot_label || 'Callback' }),
+            el('td', { class: 'mono', text: when(b.created_at) })))))) : el('p', { class: 'muted', text: 'None yet.' }),
+        el('h3', { text: `Calls (${calls.length})` }),
+        calls.length ? el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, ...calls.map((k) => el('div', { class: 'card' },
+          el('div', { class: 'row spread' }, el('b', { class: 'mono', text: pretty(k.caller_phone) }), el('span', { class: 'hint', text: when(k.created_at) })),
+          el('p', { text: k.summary || '(no summary)' }),
+          k.transcript ? el('details', {}, el('summary', { text: 'Transcript' }), el('pre', { text: k.transcript })) : null))) : el('p', { class: 'muted', text: 'None yet.' }));
+      box.hidden = false;
+      document.querySelectorAll('#rows tr').forEach((tr) => tr.classList.remove('sel'));
+      if (!quiet) box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+      if (e.auth) signOut(e.message); else { $('#appErr').textContent = e.message; $('#appErr').hidden = false; }
+    }
+  }
+
+  function signOut(msg) {
+    token = ''; try { sessionStorage.removeItem('adminToken'); } catch {}
+    clearTimeout(timer); showApp(false);
+    if (msg) { $('#loginErr').textContent = msg; $('#loginErr').hidden = false; }
+  }
+
+  $('#login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    token = $('#token').value.trim();
+    $('#loginErr').hidden = true;
+    if (!token) { $('#loginErr').textContent = 'Paste your admin token first.'; $('#loginErr').hidden = false; return; }
+    try { await api('GET', '/api/admin/clients'); }
+    catch (err) { $('#loginErr').textContent = err.message; $('#loginErr').hidden = false; return; }
+    try { sessionStorage.setItem('adminToken', token); } catch {}
+    $('#token').value = '';
+    showApp(true); load();
+  });
+  $('#refresh').addEventListener('click', load);
+  $('#logout').addEventListener('click', () => signOut());
+
+  if (token) { showApp(true); load(); } else showApp(false);
+})();
+</script>
+</body>
+</html>

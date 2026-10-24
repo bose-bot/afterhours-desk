@@ -8,14 +8,27 @@ export class VapiError extends Error {
   }
 }
 
-export function createVapiClient({ apiKey, baseUrl = 'https://api.vapi.ai', fetchImpl = globalThis.fetch }) {
+export function createVapiClient({ apiKey, baseUrl = 'https://api.vapi.ai', fetchImpl = globalThis.fetch, timeoutMs = 20_000 }) {
   async function call(method, path, body) {
-    const res = await fetchImpl(`${baseUrl}${path}`, {
-      method,
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const text = await res.text();
+    // Without a limit, a hung connection would leave a client stuck in "setting up" forever.
+    const ctl = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, timeoutMs);
+    let res, text;
+    try {
+      res = await fetchImpl(`${baseUrl}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: ctl.signal,
+      });
+      text = await res.text();
+    } catch (e) {
+      const why = timedOut ? `no answer after ${Math.round(timeoutMs / 1000)}s` : e?.message || 'network error';
+      throw new VapiError(`Vapi ${method} ${path} failed: ${why}`, 0);
+    } finally {
+      clearTimeout(timer);
+    }
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch { data = null; }
     if (!res.ok) {

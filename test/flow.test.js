@@ -121,6 +121,10 @@ test('the website and health check are served', async () => {
     assert.equal(home.status, 200);
     assert.match(home.text, /id="signupForm"/);
     assert.equal((await t.req('GET', '/privacy')).status, 200);
+    const admin = await t.req('GET', '/admin');
+    assert.equal(admin.status, 200);
+    assert.match(admin.text, /Admin token/);
+    assert.doesNotMatch(admin.text, /ADMIN_TOKEN=|test-admin-token/, 'the admin page never contains the token');
     assert.deepEqual((await t.req('GET', '/healthz')).json, { ok: true });
   } finally { await t.close(); }
 });
