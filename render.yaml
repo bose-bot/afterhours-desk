@@ -1,0 +1,42 @@
+# One-click deploy on Render: https://render.com/deploy?repo=https://github.com/bose-bot/afterhours-desk
+services:
+  - type: web
+    name: afterhours-desk
+    runtime: node
+    # A persistent disk (for the client database) needs a paid instance.
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_PATH
+        value: /var/data/afterhours.db
+      - key: TRUST_PROXY
+        value: "1"
+      - key: PROVISION_MODE
+        value: approval
+      - key: MAX_CLIENTS
+        value: "10"
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: ADMIN_TOKEN
+        generateValue: true
+      # You fill these in on Render's setup screen.
+      - key: VAPI_API_KEY
+        sync: false
+      - key: OPERATOR_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false

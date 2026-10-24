@@ -14,7 +14,8 @@ export function loadConfig(env = process.env) {
   const config = {
     port: int(env.PORT, 3000),
     // Public https URL of this server. Vapi sends tool calls and call reports here.
-    publicUrl: (env.PUBLIC_URL || '').replace(/\/+$/, ''),
+    // Render sets RENDER_EXTERNAL_URL automatically, so one-click deploys need no manual URL.
+    publicUrl: (env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, ''),
     databasePath: env.DATABASE_PATH || './data/afterhours.db',
 
     vapi: {

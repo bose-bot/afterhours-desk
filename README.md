@@ -39,9 +39,12 @@ Vapi has to reach your server over https, so for local testing run a tunnel such
 
 ## Go live
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/bose-bot/afterhours-desk)
+
 1. **Get a Vapi API key** at dashboard.vapi.ai. Add a payment method if you want more than one free number.
-2. **Deploy this repo** to any Node host with a persistent disk: Render, Railway or Fly.io all work. Or use the `Dockerfile` and mount a volume at `/app/data`.
-3. **Set the environment variables** from `.env.example`. The server refuses to start until the required ones are set.
+2. **Click Deploy to Render.** It creates the server, a disk for the database, and random secrets, and sets the public URL for you. You paste in your Vapi key and email settings on the setup screen. It starts in `approval` mode with a 10-client cap; change `PROVISION_MODE` to `auto` once you're ready.
+   Any other Node host with a persistent disk also works (Railway, Fly.io, or the `Dockerfile` with a volume at `/app/data`).
+3. **Set the environment variables** from `.env.example` if you're not using the Render button. The server refuses to start until the required ones are set.
 4. **Set up email** (any SMTP provider, such as Resend, Postmark or Gmail with an app password) so shops get their welcome email and call summaries.
 5. **Edit the website** in `public/index.html`: replace every `[BRACKETED]` placeholder (prices, your name, city, email, demo number) and review `public/privacy.html`.
 6. **Test it end to end:** sign up as a fake shop with your own email and mobile, call the number you receive, book a visit, then try "I smell gas".
