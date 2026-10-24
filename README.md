@@ -44,33 +44,30 @@ You need two free accounts first:
 - **Vapi** (dashboard.vapi.ai): copy your private API key. New accounts get free credit and a free number.
 - **Resend** (resend.com): free for 3,000 emails a month. Verify your domain, or use their test sender while trying it out, and copy your API key.
 
-The server generates its own secrets and detects its public address on Railway and Render, so those keys are all you paste in.
+The server generates its own secrets and detects its public address on Render and Railway, so those keys (plus a database address on hosts without a disk) are all you paste in.
 
-### Option A: Northflank (free Sandbox plan, always on)
+### Option A: Free, no card (Neon + Render Free + a keep-awake ping)
 
-1. Sign up at northflank.com (GitHub sign-in works) and create a **project**.
-2. **Create new → Addon → PostgreSQL.** Give it a name, keep the free resources, and create it. Wait until it says running.
-3. **Create new → Service → Combined service.** Connect GitHub, pick this repo and the `main` branch, and choose **Dockerfile** as the build type. Northflank finds port 3000 from the Dockerfile; make sure it's set to **public HTTP**.
-4. In the service's **Environment** settings add `VAPI_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM` and `OPERATOR_EMAIL`.
-5. Connect the database: open the addon's **Connection details**, copy `POSTGRES_URI`, and add it to the service as `DATABASE_URL`. (Or link the addon through a **secret group**; the app also reads `POSTGRES_URI` directly.)
-6. Create the service. When it's running, copy its public address from the service overview, add it as `PUBLIC_URL` (with `https://`), and let it restart.
-7. Open the service **logs** and save the admin token printed on first start.
+1. **Database:** sign up at neon.com (no card), create a project in a US region, and copy the connection string (`postgresql://...`).
+2. **App:** sign up at render.com, click **New → Web Service**, and pick this repo. Don't use the Deploy button below; it uses a paid plan.
+   - Language **Node**, build command `npm ci`, start command `npm start`, instance type **Free**.
+   - Environment variables: `DATABASE_URL` (the Neon string), `NODE_VERSION` = `22`, `VAPI_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM`, `OPERATOR_EMAIL`.
+   - Deploy. Render's public address is detected automatically.
+3. **Keep it awake:** at cron-job.org (free), create a job that opens `https://<your-app>.onrender.com/healthz` every 5 minutes. Render's free plan sleeps after 15 idle minutes, and a sleeping app makes the first call after a quiet spell fail.
+4. Open Render's **Logs** and save the admin token printed on first start.
 
-Client data lives in Postgres, so it survives restarts and redeploys.
+Client data lives in Neon, so Render's free plan wiping its disk doesn't lose anything. Free plans have no uptime guarantee; move to a paid instance once clients are paying.
 
-### Option B: Railway (free 30-day trial, when sign-ups are open)
-
-1. Go to railway.com, sign in with GitHub, click **New Project → Deploy from GitHub repo**, and pick this repo. It builds from the included `Dockerfile` and `railway.toml`.
-2. In the service's **Variables** tab add `VAPI_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM` and `OPERATOR_EMAIL`.
-3. In **Settings → Networking**, click **Generate Domain** so Vapi can reach the server.
-4. Add a **Volume** to the service mounted at `/app/data`. Without it, your client list is wiped on every redeploy.
-5. Open **Deployments → View logs** and save the admin token printed on first start.
-
-### Option C: Render (about $7/month, always on)
+### Option B: Render paid (about $7/month, always on)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/bose-bot/afterhours-desk)
 
-Click the button, paste the same keys on the setup screen, and deploy. It creates the server and the database disk. Render's free tier won't work here: it sleeps (so calls fail while it wakes) and wipes stored data.
+Click the button, paste the same keys on the setup screen, and deploy. It creates the server and a database disk, so no Neon or keep-awake ping is needed.
+
+### Option C: Railway or Northflank (both need a card or open sign-ups)
+
+- **Railway:** **New Project → Deploy from GitHub repo**, pick this repo (it builds from `Dockerfile` and `railway.toml`), add the variables, **Generate Domain**, and add a **Volume** at `/app/data` (or set `DATABASE_URL`).
+- **Northflank:** create a **Combined service** from this repo with the **Dockerfile** build type and public HTTP on port 3000, add the variables plus `DATABASE_URL`, then set `PUBLIC_URL` to the service's public address.
 
 ### Then, on either host
 
