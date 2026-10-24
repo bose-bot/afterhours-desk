@@ -32,11 +32,8 @@ services:
         sync: false
       - key: OPERATOR_EMAIL
         sync: false
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
+      # Free at resend.com (3,000 emails a month).
+      - key: RESEND_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false

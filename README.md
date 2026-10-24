@@ -39,21 +39,38 @@ Vapi has to reach your server over https, so for local testing run a tunnel such
 
 ## Go live
 
+You need two free accounts first:
+
+- **Vapi** (dashboard.vapi.ai): copy your private API key. New accounts get free credit and a free number.
+- **Resend** (resend.com): free for 3,000 emails a month. Verify your domain, or use their test sender while trying it out, and copy your API key.
+
+The server generates its own secrets and detects its public address on Railway and Render, so those keys are all you paste in.
+
+### Option A: Railway (free 30-day trial)
+
+1. Go to railway.com, sign in with GitHub, click **New Project → Deploy from GitHub repo**, and pick this repo. It builds from the included `Dockerfile` and `railway.toml`.
+2. In the service's **Variables** tab add `VAPI_API_KEY`, `RESEND_API_KEY`, `MAIL_FROM` and `OPERATOR_EMAIL`.
+3. In **Settings → Networking**, click **Generate Domain** so Vapi can reach the server.
+4. Add a **Volume** to the service mounted at `/app/data`. Without it, your client list is wiped on every redeploy.
+5. Open **Deployments → View logs** and save the admin token printed on first start.
+
+### Option B: Render (about $7/month, always on)
+
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/bose-bot/afterhours-desk)
 
-1. **Get a Vapi API key** at dashboard.vapi.ai. Add a payment method if you want more than one free number.
-2. **Click Deploy to Render.** It creates the server, a disk for the database, and random secrets, and sets the public URL for you. You paste in your Vapi key and email settings on the setup screen. It starts in `approval` mode with a 10-client cap; change `PROVISION_MODE` to `auto` once you're ready.
-   Any other Node host with a persistent disk also works (Railway, Fly.io, or the `Dockerfile` with a volume at `/app/data`).
-3. **Set the environment variables** from `.env.example` if you're not using the Render button. The server refuses to start until the required ones are set.
-4. **Set up email** (any SMTP provider, such as Resend, Postmark or Gmail with an app password) so shops get their welcome email and call summaries.
-5. **Edit the website** in `public/index.html`: replace every `[BRACKETED]` placeholder (prices, your name, city, email, demo number) and review `public/privacy.html`.
-6. **Test it end to end:** sign up as a fake shop with your own email and mobile, call the number you receive, book a visit, then try "I smell gas".
+Click the button, paste the same keys on the setup screen, and deploy. It creates the server and the database disk. Render's free tier won't work here: it sleeps (so calls fail while it wakes) and wipes stored data.
+
+### Then, on either host
+
+1. **Edit the website** in `public/index.html`: replace every `[BRACKETED]` placeholder (prices, your name, city, email, demo number) and review `public/privacy.html`. Push, and the host redeploys.
+2. **Test it end to end:** sign up as a fake shop with your own email and mobile, approve it (below), call the number you receive, book a visit, then try "I smell gas".
+3. **Turn on full automation** by setting `PROVISION_MODE=auto`. New deploys start in `approval` mode with a 10-client cap, so a stranger can't run up your Vapi bill before you're ready.
 
 ## Settings that matter
 
 | Variable | What it does |
 | --- | --- |
-| `PROVISION_MODE` | `auto` (default) goes live instantly. `approval` holds sign-ups until you approve them. |
+| `PROVISION_MODE` | `approval` (default) holds sign-ups until you approve them. `auto` goes live instantly. |
 | `MAX_CLIENTS` | Stops new sign-ups once this many clients exist. Start low. |
 | `VAPI_MODEL`, `VAPI_VOICE_*` | Pick the model and voice. Empty voice uses Vapi's default. |
 | `OPERATOR_EMAIL` | Where new-client and failure alerts go. |
@@ -62,7 +79,7 @@ Every Vapi phone minute and every number costs money on your Vapi account. Set `
 
 ## Admin API
 
-All admin calls need `Authorization: Bearer $ADMIN_TOKEN`.
+All admin calls need `Authorization: Bearer $ADMIN_TOKEN`. If you didn't set `ADMIN_TOKEN`, the server made one on first start: it's in the first startup log, or run `npm run admin-token` on the server.
 
 | Call | What it does |
 | --- | --- |

@@ -36,6 +36,7 @@ export async function startApp({ env = {}, vapi = fakeVapi(), now } = {}) {
     WEBHOOK_SECRET: SECRET,
     ADMIN_TOKEN: ADMIN,
     OPERATOR_EMAIL: 'owner@desk.example.com',
+    PROVISION_MODE: 'auto',
     ...env,
   });
   const db = openDb(':memory:');

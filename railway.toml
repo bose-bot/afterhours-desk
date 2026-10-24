@@ -1,0 +1,10 @@
+# Railway reads this automatically when you deploy the repo.
+# After the first deploy, add a volume mounted at /app/data so client data survives restarts (see README).
+[build]
+builder = "dockerfile"
+dockerfilePath = "./Dockerfile"
+
+[deploy]
+healthcheckPath = "/healthz"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"

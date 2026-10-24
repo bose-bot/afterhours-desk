@@ -15,7 +15,8 @@ export function loadConfig(env = process.env) {
     port: int(env.PORT, 3000),
     // Public https URL of this server. Vapi sends tool calls and call reports here.
     // Render sets RENDER_EXTERNAL_URL automatically, so one-click deploys need no manual URL.
-    publicUrl: (env.PUBLIC_URL || env.RENDER_EXTERNAL_URL || '').replace(/\/+$/, ''),
+    publicUrl: (env.PUBLIC_URL || env.RENDER_EXTERNAL_URL
+      || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : '')).replace(/\/+$/, ''),
     databasePath: env.DATABASE_PATH || './data/afterhours.db',
 
     vapi: {
@@ -34,15 +35,18 @@ export function loadConfig(env = process.env) {
     // Token for the /api/admin endpoints.
     adminToken: env.ADMIN_TOKEN || '',
 
-    // "auto": sign-ups go live with no human step. "approval": they wait for /api/admin/clients/:id/approve.
-    provisionMode: env.PROVISION_MODE === 'approval' ? 'approval' : 'auto',
+    // "auto": sign-ups go live with no human step. "approval" (default, safest for a fresh deploy):
+    // they wait for /api/admin/clients/:id/approve. Switch to auto once you're ready.
+    provisionMode: env.PROVISION_MODE === 'auto' ? 'auto' : 'approval',
     // Hard cap so a flood of fake sign-ups can't run up your Vapi bill.
-    maxClients: int(env.MAX_CLIENTS, 25),
+    maxClients: int(env.MAX_CLIENTS, 10),
     signupsPerIpPerHour: int(env.SIGNUPS_PER_IP_PER_HOUR, 3),
 
     timezone: env.DEFAULT_TIMEZONE || 'America/New_York',
 
     mail: {
+      // Resend's HTTP API works on hosts that block SMTP ports. Takes priority over SMTP when set.
+      resendApiKey: env.RESEND_API_KEY || '',
       host: env.SMTP_HOST || '',
       port: int(env.SMTP_PORT, 587),
       secure: bool(env.SMTP_SECURE, false),

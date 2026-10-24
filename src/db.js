@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS bookings_slot ON bookings(client_id, slot_start) WHERE kind = 'booking';
 
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS calls (
   id TEXT PRIMARY KEY,               -- Vapi call id
   client_id TEXT REFERENCES clients(id),
@@ -132,6 +137,19 @@ export function openDb(path) {
 
     listCalls(clientId) {
       return db.prepare('SELECT * FROM calls WHERE client_id = ? ORDER BY created_at DESC').all(clientId);
+    },
+
+    getSetting(key) {
+      return db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value ?? null;
+    },
+
+    // Returns the stored value, creating it with make() the first time. created tells you which happened.
+    getOrCreateSetting(key, make) {
+      const existing = this.getSetting(key);
+      if (existing !== null) return { value: existing, created: false };
+      const value = make();
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(key, value);
+      return { value, created: true };
     },
 
     close() { db.close(); },

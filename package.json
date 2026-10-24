@@ -11,6 +11,7 @@
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning src/index.js",
     "dev": "node --disable-warning=ExperimentalWarning --watch src/index.js",
+    "admin-token": "node --disable-warning=ExperimentalWarning scripts/admin-token.js",
     "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\""
   },
   "keywords": [
