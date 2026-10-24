@@ -13,4 +13,5 @@ VOLUME ["/app/data"]
 EXPOSE 3000
 
 # Hosts mount volumes as root, so fix ownership at start, then drop to the unprivileged node user.
-CMD ["sh", "-c", "chown -R node:node /app/data 2>/dev/null || true; exec setpriv --reuid=node --regid=node --init-groups node --disable-warning=ExperimentalWarning src/index.js"]
+# If dropping privileges isn't possible on this host, run as-is rather than fail to start.
+CMD ["sh", "-c", "chown -R node:node /app/data 2>/dev/null || true; if command -v setpriv >/dev/null && setpriv --reuid=node --regid=node --init-groups true 2>/dev/null; then exec setpriv --reuid=node --regid=node --init-groups node --disable-warning=ExperimentalWarning src/index.js; else exec node --disable-warning=ExperimentalWarning src/index.js; fi"]
