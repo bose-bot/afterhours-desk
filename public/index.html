@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AfterHours Desk — AI receptionist for HVAC companies</title>
+<meta name="description" content="An AI receptionist for heating and cooling companies. Answers after-hours and overflow calls, books service visits into your calendar, and texts you a summary of every call.">
+<meta property="og:title" content="AfterHours Desk — AI receptionist for HVAC companies">
+<meta property="og:description" content="Every call answered. Every job booked. Even at 2 a.m.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23EC7A2E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+:root{
+  --bg:#F3F6F7;--surface:#FFFFFF;--surface-2:#E7EDF0;--fg:#0E1A22;--muted:#4D5D67;--line:#D2DBE0;
+  --heat:#EC7A2E;--heat-ink:#9A3A0B;--on-heat:#1A0E05;--cool:#1E6AAB;--cool-bg:#E1EEF8;
+  --crit:#B42318;--crit-bg:#FDE7E4;--warn:#8A5A00;--warn-bg:#FFF1CC;--ok:#1C6E45;--ok-bg:#DCF2E5;
+  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;--body:'Public Sans','Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0C1419;--surface:#142028;--surface-2:#1B2A35;--fg:#E7EDF0;--muted:#9CACB6;--line:#2A3B47;
+  --heat:#F28A3C;--heat-ink:#F7A86A;--cool:#67B1EA;--cool-bg:#132D42;
+  --crit:#FF9A90;--crit-bg:#3B1714;--warn:#F2C14E;--warn-bg:#36290A;--ok:#72D5A2;--ok-bg:#11301E;color-scheme:dark}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16.5px;line-height:1.6}
+h1,h2,h3{font-family:var(--display);line-height:1.08;letter-spacing:-.02em;text-wrap:balance;margin:0}
+h1{font-size:clamp(38px,6vw,66px);font-weight:800;letter-spacing:-.035em}
+h2{font-size:clamp(28px,3.8vw,40px);font-weight:800}
+h3{font-size:20px;font-weight:600;letter-spacing:-.01em}
+p{margin:0}
+a{color:var(--cool)}
+img{max-width:100%}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.band{padding-block:72px}.band.alt{background:var(--surface-2)}
+.stack{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:19px;color:var(--muted);max-width:60ch}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--heat-ink)}
+.muted{color:var(--muted)}.hint{font-size:13.5px;color:var(--muted)}
+.mono{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+:focus-visible{outline:3px solid var(--cool);outline-offset:2px;border-radius:6px}
+header.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px;padding-block:12px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:20px;color:var(--fg);text-decoration:none}
+nav.main{display:flex;flex-wrap:wrap;gap:4px}
+nav.main a{text-decoration:none;color:var(--fg);font-weight:500;font-size:15px;padding:9px 12px;border-radius:8px;min-height:40px;display:inline-flex;align-items:center}
+nav.main a:hover{background:var(--surface-2)}
+nav.main a.cta{background:var(--heat);color:var(--on-heat);font-weight:700}
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;min-height:46px;border-radius:10px;background:var(--heat);color:var(--on-heat)}
+.btn:hover{filter:brightness(1.05)}
+.btn.ghost{background:transparent;color:var(--fg);border:1.5px solid var(--line)}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:8px}
+.step-n{font-family:var(--display);font-weight:800;font-size:44px;line-height:1;color:var(--heat)}
+.hero{display:flex;flex-wrap:wrap;gap:48px;align-items:center}
+.hero>.copy{flex:999 1 500px;min-width:0;display:flex;flex-direction:column;gap:22px}
+.hero>.aside{flex:1 1 320px;min-width:0}
+.sum{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.sum-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
+.sum dl{margin:0;display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 12px;font-size:15px}
+.sum dt{color:var(--muted)}.sum dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.pill{display:inline-flex;align-items:center;font-size:13px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.pill.Emergency{background:var(--crit-bg);color:var(--crit)}.pill.Priority{background:var(--warn-bg);color:var(--warn)}.pill.Routine{background:var(--ok-bg);color:var(--ok)}
+.demo{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.call{flex:999 1 480px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.call-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
+.msgs{padding:18px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:85%;padding:10px 14px;border-radius:14px}
+.msg.ai{background:var(--surface-2);align-self:flex-start;border-bottom-left-radius:4px}
+.msg.me{background:var(--cool);color:#FFFFFF;align-self:flex-end;border-bottom-right-radius:4px}
+@media (prefers-color-scheme:dark){.msg.me{color:#06131E}}
+.side{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.callbox{background:var(--surface);border:2px solid var(--heat);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:6px}
+.callbox b.num{font-family:var(--display);font-size:28px;font-weight:800;user-select:all}
+.price{font-family:var(--display);font-weight:800;font-size:40px;line-height:1}
+.price small{font-family:var(--body);font-size:16px;font-weight:500;color:var(--muted)}
+.card ul{margin:0;padding-left:20px;color:var(--muted)}
+form.fs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px 20px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field.full{grid-column:1/-1}
+label{font-weight:600;font-size:14.5px}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;min-height:46px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cool)}
+.hp{position:absolute;left:-9999px}
+footer.foot{border-top:1px solid var(--line);background:var(--surface)}
+footer.foot .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-between;padding-block:24px;font-size:14px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="#top"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--heat)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>AfterHours Desk</a>
+  <nav class="main" aria-label="Main">
+    <a href="#demo">Demo</a><a href="#pricing">Pricing</a><a href="#about">About</a><a href="#signup" class="cta">Get started</a>
+  </nav>
+</div></header>
+
+<main id="top">
+<section class="band"><div class="wrap hero">
+  <div class="copy">
+    <p class="eyebrow">AI receptionist for heating &amp; cooling companies</p>
+    <h1>Every call answered. Every job booked. Even at 2&nbsp;a.m.</h1>
+    <p class="lede">AfterHours Desk picks up when your team can't. It books service visits into your calendar, sends emergencies to the right place, and texts you a summary of every call.</p>
+    <div class="row"><a class="btn" href="#demo">Hear it handle a call</a><a class="btn ghost" href="#signup">Set it up for my shop</a></div>
+  </div>
+  <div class="aside">
+    <div class="sum" aria-label="Example call summary">
+      <div class="sum-head"><span class="eyebrow">Texted to the owner</span><span class="pill Priority">Priority</span></div>
+      <dl><dt>Caller</dt><dd>Dana R. (example)</dd><dt>Issue</dt><dd>AC blowing warm air, unit about 12 years old</dd><dt>Booked</dt><dd><b>Tue 8–10 a.m.</b></dd><dt>Call time</dt><dd class="mono">9:47 PM · after hours</dd></dl>
+    </div>
+  </div>
+</div></section>
+
+<section class="band alt"><div class="wrap stack" style="gap:28px">
+  <div class="stack"><h2>A missed call is usually a booked job for someone else.</h2>
+  <p class="lede">When a furnace quits, homeowners call down the list until somebody answers. Your techs are on roofs and in crawlspaces, and the office closes at six. That's when the calls come in.</p></div>
+  <div class="grid">
+    <div class="card"><h3>After-hours calls</h3><p class="muted">Nights, weekends and holidays get answered and booked instead of going to voicemail.</p></div>
+    <div class="card"><h3>Busy-season overflow</h3><p class="muted">When the first heat wave or cold snap floods your lines, nobody waits on hold.</p></div>
+    <div class="card"><h3>Hands-full moments</h3><p class="muted">Owner-operators stop choosing between finishing a job and answering the phone.</p></div>
+  </div>
+</div></section>
+
+<section class="band" id="demo"><div class="wrap stack" style="gap:24px">
+  <div class="stack" style="gap:10px"><p class="eyebrow">Demo</p><h2>What a call sounds like</h2>
+  <p class="lede">An example call to a sample HVAC company at 9:47 p.m., and the text the owner gets right after.</p></div>
+  <div class="demo">
+    <div class="call">
+      <div class="call-head"><span class="dot" aria-hidden="true"></span><div><b>Sample HVAC company</b><div class="hint">Example call transcript</div></div></div>
+      <div class="msgs">
+        <div class="msg ai">Thanks for calling, this is the virtual assistant. I can book a service visit, answer questions, or get a message to the team. How can I help?</div>
+        <div class="msg me">Hi, my AC is blowing warm air and it's really hot in here.</div>
+        <div class="msg ai">Sorry to hear that. Let's get a technician out. Can I have your name, please?</div>
+        <div class="msg me">Dana R.</div>
+        <div class="msg ai">Thanks, Dana. What's the best number to reach you?</div>
+        <div class="msg me">555-010-2233</div>
+        <div class="msg ai">That's 5-5-5, 0-1-0, 2-2-3-3. And the service address?</div>
+        <div class="msg me">14 Elm Street.</div>
+        <div class="msg ai">Got it, that's in our area. I have Tuesday 8 to 10 a.m. or Tuesday 1 to 3 p.m. Which works better?</div>
+        <div class="msg me">Morning, please.</div>
+        <div class="msg ai">You're all set for Tuesday between 8 and 10 a.m. You'll get a text confirmation, and the tech will call when they're on the way. Anything else?</div>
+      </div>
+    </div>
+    <aside class="side" aria-label="Try it yourself">
+      <div class="callbox">
+        <span class="eyebrow">Try it yourself</span>
+        <p>Call the demo line and pretend your furnace just quit.</p>
+        <b class="num">[DEMO NUMBER]</b>
+        <span class="hint">Answered by the AI receptionist, 24/7.</span>
+      </div>
+      <div class="sum">
+        <div class="sum-head"><span class="eyebrow">Owner gets this text</span><span class="pill Priority">Priority</span></div>
+        <dl><dt>Caller</dt><dd>Dana R.</dd><dt>Phone</dt><dd class="mono">555-010-2233</dd><dt>Address</dt><dd>14 Elm Street</dd><dt>Issue</dt><dd>AC blowing warm air</dd><dt>Booked</dt><dd><b>Tue 8–10 a.m.</b></dd></dl>
+      </div>
+    </aside>
+  </div>
+</div></section>
+
+<section class="band alt"><div class="wrap stack" style="gap:28px">
+  <h2>Live in minutes</h2>
+  <div class="grid">
+    <div class="stack" style="gap:8px"><span class="step-n">1</span><h3>Fill in the form</h3><p class="muted">Hours, service area, fees and how you handle emergencies. Takes about three minutes.</p></div>
+    <div class="stack" style="gap:8px"><span class="step-n">2</span><h3>Get your number instantly</h3><p class="muted">Your receptionist and a local phone number are created automatically. Call it to hear it work.</p></div>
+    <div class="stack" style="gap:8px"><span class="step-n">3</span><h3>Forward your calls</h3><p class="muted">Send missed and after-hours calls to it. Every booking and call summary lands in your inbox.</p></div>
+  </div>
+</div></section>
+
+<section class="band" id="pricing"><div class="wrap stack" style="gap:28px">
+  <div class="stack" style="gap:10px"><p class="eyebrow">Pricing</p><h2>Simple monthly pricing</h2><p class="lede">No long contracts. Cancel any month.</p></div>
+  <div class="grid">
+    <div class="card" style="gap:14px"><h3>Founding pilot</h3><p class="price">$[PILOT] <small>/ month</small></p><p class="muted">For our first few HVAC partners. Setup included in exchange for honest feedback.</p><ul><li>After-hours and overflow calls</li><li>Calendar booking and call summaries</li><li>Monthly tune-up call with us</li></ul><a class="btn" href="#signup" style="margin-top:auto">Claim a pilot spot</a></div>
+    <div class="card" style="gap:14px"><h3>Standard</h3><p class="price">$[MONTHLY] <small>/ month</small></p><p class="muted">Plus a one-time $[SETUP] setup. Includes up to [MINUTES] call minutes a month.</p><ul><li>Everything in the pilot</li><li>Emergency routing to your on-call tech</li><li>Seasonal script updates</li></ul><a class="btn ghost" href="#signup" style="margin-top:auto">Get started</a></div>
+  </div>
+  <div class="stack" style="gap:20px;max-width:780px">
+    <h2 style="font-size:28px">Questions</h2>
+    <div class="stack" style="gap:6px"><h3>Do I need a new phone number?</h3><p class="muted">No. You keep your number and forward calls when you're busy or closed.</p></div>
+    <div class="stack" style="gap:6px"><h3>Will callers know it's AI?</h3><p class="muted">It introduces itself as your virtual assistant and answers honestly if asked. Anyone who wants a person gets transferred or a callback.</p></div>
+    <div class="stack" style="gap:6px"><h3>What if it gets something wrong?</h3><p class="muted">You see every call summary, and we review calls with you each month. If it isn't sure, it takes a message instead of guessing.</p></div>
+  </div>
+</div></section>
+
+<section class="band alt" id="about"><div class="wrap stack" style="gap:24px">
+  <div class="stack" style="gap:10px;max-width:760px"><p class="eyebrow">About</p><h2>A front desk for shops that don't have one</h2>
+  <p class="lede">Most heating and cooling companies are small teams where the owner is also a tech. [Your name] started AfterHours Desk in [YOUR CITY] to help local trades stop losing jobs to voicemail. Every setup is done by hand and tested with the owner.</p></div>
+  <div class="grid">
+    <div class="card"><h3>Safety first</h3><p class="muted">Gas smell, CO alarm, smoke or sparking: it tells the caller to get out and call 911 or the gas company. It never troubleshoots.</p></div>
+    <div class="card"><h3>Honest</h3><p class="muted">It says it's an AI assistant when asked and never claims to be a person.</p></div>
+    <div class="card"><h3>No guessing</h3><p class="muted">It only quotes the fees you approve and takes a message when it doesn't know.</p></div>
+    <div class="card"><h3>No payments</h3><p class="muted">It never takes card numbers or payment details over the phone.</p></div>
+  </div>
+</div></section>
+
+<section class="band" id="signup"><div class="wrap stack" style="gap:24px;max-width:900px">
+  <div class="stack" style="gap:10px"><p class="eyebrow">Get started</p><h2>Set up your AI receptionist</h2>
+  <p class="lede">Tell us how your shop works. Your AI receptionist and its phone number are created automatically, usually in under a minute.</p></div>
+  <form class="fs" id="signupForm" novalidate>
+    <p class="hp"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></p>
+    <div class="field"><label for="f_business">Business name</label><input id="f_business" name="business" required maxlength="80"></div>
+    <div class="field"><label for="f_contact">Your name</label><input id="f_contact" name="contact" required maxlength="80" autocomplete="name"></div>
+    <div class="field"><label for="f_phone">Your mobile</label><input id="f_phone" name="phone" type="tel" required autocomplete="tel" placeholder="(513) 555-0142"><span class="hint">We pick a local number with the same area code.</span></div>
+    <div class="field"><label for="f_email">Email</label><input id="f_email" name="email" type="email" required autocomplete="email"><span class="hint">Bookings and call summaries go here.</span></div>
+    <div class="field full"><label for="f_area">Service area</label><input id="f_area" name="area" maxlength="300" placeholder="Cities or ZIP codes you serve"></div>
+    <div class="field"><label for="f_workDays">Days you take appointments</label><select id="f_workDays" name="workDays"><option value="mon-fri">Monday to Friday</option><option value="mon-sat">Monday to Saturday</option><option value="every-day">Every day</option></select></div>
+    <div class="field"><label for="f_timezone">Time zone</label><select id="f_timezone" name="timezone"><option value="America/New_York">Eastern</option><option value="America/Chicago">Central</option><option value="America/Denver">Mountain</option><option value="America/Phoenix">Arizona</option><option value="America/Los_Angeles">Pacific</option><option value="America/Anchorage">Alaska</option><option value="Pacific/Honolulu">Hawaii</option></select></div>
+    <div class="field"><label for="f_dayStart">First appointment</label><input id="f_dayStart" name="dayStart" type="time" value="08:00" step="1800"></div>
+    <div class="field"><label for="f_dayEnd">Last appointment ends</label><input id="f_dayEnd" name="dayEnd" type="time" value="17:00" step="1800"><span class="hint">Visits are booked in 2-hour windows.</span></div>
+    <div class="field"><label for="f_office">Office number</label><input id="f_office" name="office" type="tel"></div>
+    <div class="field"><label for="f_oncall">After-hours on-call number</label><input id="f_oncall" name="oncall" type="tel"></div>
+    <div class="field"><label for="f_fee">Service call fee</label><input id="f_fee" name="fee" maxlength="120" placeholder="$89, waived with repair"></div>
+    <div class="field"><label for="f_afterfee">After-hours fee</label><input id="f_afterfee" name="afterfee" maxlength="120" placeholder="+$75"></div>
+    <div class="field full"><label for="f_services">Services you offer</label><input id="f_services" name="services" maxlength="400" placeholder="Furnace &amp; AC repair, tune-ups, heat pumps, new system estimates"></div>
+    <div class="field full"><label for="f_notes">Anything else the assistant should know</label><textarea id="f_notes" name="notes" rows="3" maxlength="1500" placeholder="Maintenance plan, brands you don't service, financing…"></textarea></div>
+    <div class="field"><label for="f_plan">Plan</label><select id="f_plan" name="plan"><option>Founding pilot</option><option>Standard</option><option>Not sure yet</option></select></div>
+    <div class="field full row"><button class="btn" type="submit" id="signupBtn">Create my receptionist</button><span class="hint">By submitting you agree to our <a href="/privacy">privacy policy</a>. Don't include passwords or payment details.</span></div>
+    <p class="field full" id="formError" role="alert" hidden style="color:var(--crit);font-weight:600"></p>
+  </form>
+  <div id="signupDone" class="card" hidden aria-live="polite" style="gap:12px">
+    <span class="eyebrow">You're signed up</span>
+    <h3 id="doneTitle">Setting up your receptionist…</h3>
+    <p class="muted" id="doneText">This usually takes under a minute. You can keep this page open or check your email.</p>
+    <b class="num" id="doneNumber" hidden style="font-family:var(--display);font-size:32px;font-weight:800;user-select:all"></b>
+  </div>
+  <p class="muted">Prefer email? Write to <b style="user-select:all">[YOUR EMAIL]</b>.</p>
+</div></section>
+</main>
+
+<footer class="foot"><div class="wrap"><span>© 2026 AfterHours Desk · [YOUR CITY, STATE]</span><span><a href="/privacy">Privacy</a> · Calls may be recorded to improve service, with notice to callers.</span></div></footer>
+<script>
+(() => {
+  const form = document.getElementById('signupForm');
+  const btn = document.getElementById('signupBtn');
+  const formError = document.getElementById('formError');
+  const done = document.getElementById('signupDone');
+  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : n; };
+
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const sel = document.getElementById('f_timezone');
+    if ([...sel.options].some((o) => o.value === tz)) sel.value = tz;
+  } catch {}
+
+  function clearErrors() {
+    formError.hidden = true;
+    form.querySelectorAll('.field-error').forEach((e) => e.remove());
+    form.querySelectorAll('[aria-invalid]').forEach((e) => e.removeAttribute('aria-invalid'));
+  }
+
+  function showErrors(errors) {
+    let first = null;
+    for (const [key, msg] of Object.entries(errors || {})) {
+      const input = form.querySelector(`[name="${key}"]`);
+      if (!input) { formError.textContent = msg; formError.hidden = false; continue; }
+      input.setAttribute('aria-invalid', 'true');
+      const p = document.createElement('span');
+      p.className = 'hint field-error'; p.style.color = 'var(--crit)'; p.textContent = msg;
+      input.closest('.field').append(p);
+      first = first || input;
+    }
+    if (first) first.focus();
+  }
+
+  function render(c) {
+    const title = document.getElementById('doneTitle'), text = document.getElementById('doneText'), num = document.getElementById('doneNumber');
+    if (c.status === 'active') {
+      title.textContent = `${c.business} is live.`;
+      if (c.phoneNumber) {
+        num.textContent = pretty(c.phoneNumber); num.hidden = false;
+        text.textContent = 'Call this number to hear your receptionist. Then set your business line to forward missed calls to it. Full steps are in your email.';
+      } else {
+        text.textContent = 'Your number is being activated. We will email it to you shortly.';
+      }
+      return true;
+    }
+    if (c.status === 'pending_approval') { title.textContent = 'Thanks, we got your details.'; text.textContent = 'We review every new shop. You will get an email with your number within one business day.'; return true; }
+    if (c.status === 'failed') { title.textContent = 'We hit a snag setting this up.'; text.textContent = 'Our team has been notified and will email you within one business day.'; return true; }
+    return false;
+  }
+
+  async function poll(id, tries = 0) {
+    try {
+      const r = await fetch(`/api/signup/${encodeURIComponent(id)}`);
+      const data = await r.json();
+      if (data.ok && render(data.client)) return;
+    } catch {}
+    if (tries < 40) setTimeout(() => poll(id, tries + 1), 3000);
+    else document.getElementById('doneText').textContent = 'Still working on it. We will email you as soon as it is ready.';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErrors();
+    btn.disabled = true; btn.textContent = 'Creating…';
+    try {
+      const body = Object.fromEntries(new FormData(form));
+      const r = await fetch('/api/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.ok) { showErrors(data.errors || { form: 'Something went wrong. Try again.' }); return; }
+      form.hidden = true; done.hidden = false;
+      done.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (data.client && !render(data.client)) poll(data.client.id);
+    } catch {
+      showErrors({ form: 'Could not reach the server. Check your connection and try again.' });
+    } finally {
+      btn.disabled = false; btn.textContent = 'Create my receptionist';
+    }
+  });
+})();
+</script>
+</body>
+</html>

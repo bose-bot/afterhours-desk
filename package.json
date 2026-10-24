@@ -1,0 +1,29 @@
+{
+  "name": "afterhours-desk",
+  "version": "0.1.0",
+  "description": "Open-source AI phone receptionist for HVAC and home-service businesses. Sign-up form to live phone number, fully automatic, on Vapi.",
+  "type": "module",
+  "main": "src/index.js",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\""
+  },
+  "keywords": [
+    "ai-receptionist",
+    "voice-ai",
+    "vapi",
+    "hvac",
+    "phone-agent",
+    "small-business",
+    "automation"
+  ],
+  "dependencies": {
+    "express": "4.21.2",
+    "nodemailer": "6.9.16"
+  }
+}

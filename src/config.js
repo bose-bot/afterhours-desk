@@ -1,0 +1,68 @@
+// Reads settings from environment variables. See .env.example for every option.
+
+function bool(v, fallback) {
+  if (v === undefined || v === '') return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(String(v).toLowerCase());
+}
+
+function int(v, fallback) {
+  const n = Number.parseInt(v, 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+export function loadConfig(env = process.env) {
+  const config = {
+    port: int(env.PORT, 3000),
+    // Public https URL of this server. Vapi sends tool calls and call reports here.
+    publicUrl: (env.PUBLIC_URL || '').replace(/\/+$/, ''),
+    databasePath: env.DATABASE_PATH || './data/afterhours.db',
+
+    vapi: {
+      apiKey: env.VAPI_API_KEY || '',
+      baseUrl: (env.VAPI_BASE_URL || 'https://api.vapi.ai').replace(/\/+$/, ''),
+      modelProvider: env.VAPI_MODEL_PROVIDER || 'openai',
+      model: env.VAPI_MODEL || 'gpt-4o',
+      // Leave both empty to use Vapi's default voice.
+      voiceProvider: env.VAPI_VOICE_PROVIDER || '',
+      voiceId: env.VAPI_VOICE_ID || '',
+      defaultAreaCode: env.DEFAULT_AREA_CODE || '',
+    },
+
+    // Shared secret Vapi must present on webhook calls.
+    webhookSecret: env.WEBHOOK_SECRET || '',
+    // Token for the /api/admin endpoints.
+    adminToken: env.ADMIN_TOKEN || '',
+
+    // "auto": sign-ups go live with no human step. "approval": they wait for /api/admin/clients/:id/approve.
+    provisionMode: env.PROVISION_MODE === 'approval' ? 'approval' : 'auto',
+    // Hard cap so a flood of fake sign-ups can't run up your Vapi bill.
+    maxClients: int(env.MAX_CLIENTS, 25),
+    signupsPerIpPerHour: int(env.SIGNUPS_PER_IP_PER_HOUR, 3),
+
+    timezone: env.DEFAULT_TIMEZONE || 'America/New_York',
+
+    mail: {
+      host: env.SMTP_HOST || '',
+      port: int(env.SMTP_PORT, 587),
+      secure: bool(env.SMTP_SECURE, false),
+      user: env.SMTP_USER || '',
+      pass: env.SMTP_PASS || '',
+      from: env.MAIL_FROM || '',
+      // Where new-sign-up and failure alerts go (you, the operator).
+      operatorEmail: env.OPERATOR_EMAIL || '',
+    },
+
+    brandName: env.BRAND_NAME || 'AfterHours Desk',
+  };
+  return config;
+}
+
+// Problems that stop the server from doing its job. Returned, not thrown, so tests can check them.
+export function configProblems(config) {
+  const problems = [];
+  if (!config.vapi.apiKey) problems.push('VAPI_API_KEY is not set.');
+  if (!/^https:\/\//.test(config.publicUrl)) problems.push('PUBLIC_URL must be the public https address of this server.');
+  if (config.webhookSecret.length < 24) problems.push('WEBHOOK_SECRET must be at least 24 random characters.');
+  if (config.adminToken.length < 24) problems.push('ADMIN_TOKEN must be at least 24 random characters.');
+  return problems;
+}
