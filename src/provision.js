@@ -56,6 +56,45 @@ ${config.brandName}`,
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Vapi says e.g. "This area code is currently not available. Hint: Try one of 323, 213, 937."
+const AREA_UNAVAILABLE = /area code.*not available/i;
+export function suggestedAreaCodes(message) {
+  const hint = /try one of ([\d,\s]+)/i.exec(message || '');
+  return hint ? [...new Set(hint[1].match(/\b\d{3}\b/g) || [])] : [];
+}
+
+/**
+ * Asks for a number in the shop's area code. If Vapi has none there, tries the area codes
+ * Vapi suggests, then the operator's default, then any available number.
+ */
+async function createNumberWithFallback(vapi, client, config, logger) {
+  const base = { provider: 'vapi', assistantId: client.vapiAssistantId, name: client.business.slice(0, 40) };
+  const tried = new Set();
+  const queue = [client.details.areaCode, config.vapi.defaultAreaCode].filter(Boolean);
+  let lastErr;
+
+  while (queue.length) {
+    const area = queue.shift();
+    if (tried.has(area)) continue;
+    tried.add(area);
+    try {
+      return await vapi.createPhoneNumber({ ...base, numberDesiredAreaCode: area });
+    } catch (e) {
+      if (!AREA_UNAVAILABLE.test(e.message)) throw e;
+      lastErr = e;
+      logger.warn(`[provision] no numbers in ${area} for ${client.business}; trying alternatives`);
+      queue.push(...suggestedAreaCodes(e.message));
+      if (tried.size >= 5) break;
+    }
+  }
+  // Last resort: let Vapi pick any available number.
+  try {
+    return await vapi.createPhoneNumber(base);
+  } catch (e) {
+    throw lastErr && AREA_UNAVAILABLE.test(e.message) ? lastErr : e;
+  }
+}
+
 /**
  * Runs (or re-runs) setup for one client. Safe to retry: steps that already finished are skipped.
  * deps: { db, vapi, mailer, config, logger, numberPollDelayMs }
@@ -76,10 +115,7 @@ export async function provisionClient(clientId, deps) {
     }
 
     if (!client.vapiPhoneId) {
-      const body = { provider: 'vapi', assistantId: client.vapiAssistantId, name: client.business.slice(0, 40) };
-      const area = client.details.areaCode || config.vapi.defaultAreaCode;
-      if (area) body.numberDesiredAreaCode = area;
-      const p = await vapi.createPhoneNumber(body);
+      const p = await createNumberWithFallback(vapi, client, config, logger);
       if (!p?.id) throw new Error('Vapi did not return a phone number id.');
       client = await db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: p.number || null });
     }

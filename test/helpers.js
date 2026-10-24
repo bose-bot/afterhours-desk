@@ -7,7 +7,7 @@ import { loadConfig } from '../src/config.js';
 export const SECRET = 'test-webhook-secret-0123456789abcdef';
 export const ADMIN = 'test-admin-token-0123456789abcdefgh';
 
-export function fakeVapi({ failPhone = false, numberLater = false } = {}) {
+export function fakeVapi({ failPhone = false, numberLater = false, availableAreas = null } = {}) {
   const calls = [];
   let n = 0;
   return {
@@ -18,6 +18,13 @@ export function fakeVapi({ failPhone = false, numberLater = false } = {}) {
     async createPhoneNumber(body) {
       calls.push(['createPhoneNumber', body]);
       if (this.failPhone) { const e = new Error('Vapi POST /phone-number failed (400): no numbers available'); throw e; }
+      // availableAreas: list of area codes with stock; null means every area code works.
+      if (availableAreas && body.numberDesiredAreaCode && !availableAreas.includes(body.numberDesiredAreaCode)) {
+        throw new Error(`Vapi POST /phone-number failed (400): This area code is currently not available. Hint: Try one of 323, 213, ${availableAreas[0] || '999'}.`);
+      }
+      if (availableAreas && !availableAreas.length && !body.numberDesiredAreaCode) {
+        return { id: `pn_${++n}`, number: '+19995550100' };
+      }
       return { id: `pn_${++n}`, number: numberLater ? undefined : '+15135550199' };
     },
     async getPhoneNumber(id) { calls.push(['getPhoneNumber', id]); return { id, number: '+15135550177' }; },
