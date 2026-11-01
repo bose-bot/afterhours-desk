@@ -47,7 +47,7 @@ a{color:var(--cool)}
 .section-head{display:flex;flex-direction:column;gap:16px;max-width:760px;margin-bottom:48px}
 
 /* ---- header ---- */
-header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--night) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,#04080E 55%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px;padding-block:14px}
 .brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:800;font-size:19px;font-variation-settings:'wdth' 120}
 nav.main{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
@@ -70,34 +70,6 @@ nav.main a.btn:hover{background:var(--heat)}
 .status{display:inline-flex;align-items:center;gap:10px;font-size:15px;color:var(--dim)}
 .status i{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent);animation:ping 2.4s infinite}
 @keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 55%,transparent)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
-
-/* live call device */
-.device{position:relative;background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;box-shadow:0 40px 80px -40px #000}
-.device-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.caller{display:flex;align-items:center;gap:12px;min-width:0}
-.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--heat) 18%,transparent);color:var(--heat);flex:none}
-.caller b{display:block;font-variation-settings:'wdth' 110}
-.timer{font-variant-numeric:tabular-nums;color:var(--dim);font-size:15px}
-canvas.wave{width:100%;height:64px;display:block}
-.transcript{display:flex;flex-direction:column;gap:9px;height:252px;overflow:hidden;mask-image:linear-gradient(to bottom,transparent,#000 18%);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 18%);justify-content:flex-end}
-.line{display:flex;gap:10px;font-size:15.5px;line-height:1.45;align-items:baseline}
-.line .who{flex:none;width:58px;font-size:13px;font-weight:700;font-variation-settings:'wdth' 112}
-.line.ai .who{color:var(--cool)}
-.line.caller .who{color:var(--heat)}
-.line .say{color:var(--ink);min-width:0}
-.line.tool .say{color:var(--dim);font-size:14px}
-.cursor{display:inline-block;width:2px;height:1em;background:var(--cool);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
-
-/* schedule strip that receives the booking */
-.week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
-.day{background:var(--night);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px;min-height:74px;display:flex;flex-direction:column;gap:5px;min-width:0}
-.day span{font-size:12.5px;color:var(--faint);font-variation-settings:'wdth' 108}
-.slot{font-size:12px;line-height:1.3;border-radius:7px;padding:5px 6px;background:var(--panel-2);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.slot.new{background:var(--cool);color:#06202E;font-weight:700;transform-origin:top;animation:drop .5s cubic-bezier(.2,1.4,.4,1) both}
-@keyframes drop{from{transform:translateY(-18px) scale(.9);opacity:0}to{transform:none;opacity:1}}
-.device-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.replay{appearance:none;background:none;border:0;color:var(--cool);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;min-height:40px}
 
 /* ---- night timeline ---- */
 .night{background:linear-gradient(180deg,var(--night),#0A121B)}
@@ -201,9 +173,91 @@ footer.foot{border-top:1px solid var(--line)}
 footer.foot .wrap{display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:space-between;padding-block:28px;font-size:14px;color:var(--faint)}
 footer.foot a{color:var(--dim)}
 
+/* ---- opening scene: 2 AM, snow, one lit window, a phone ringing ---- */
+.scene{position:relative;height:100vh;height:100svh;min-height:620px;overflow:hidden;margin-top:-71px;background:#04080E}
+.scene canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scene-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,8,14,.82) 0%,rgba(4,8,14,.35) 45%,transparent 70%),linear-gradient(0deg,rgba(13,22,33,1) 0%,transparent 28%);pointer-events:none}
+.scene-content{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:space-between;gap:28px;padding-block:calc(71px + clamp(24px,5vh,56px)) clamp(64px,10vh,110px)}
+.scene-copy{max-width:760px;display:flex;flex-direction:column;gap:clamp(16px,2.6vh,26px)}
+.scene h1{font-size:clamp(40px,min(5.6vw,8.4vh),80px)}
+.clock{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+.clock b{font-size:clamp(44px,6vw,80px);font-weight:300;font-variation-settings:'wdth' 125;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ink);line-height:1}
+.clock span{color:var(--dim);font-size:16px}
+.ringing{display:inline-flex;align-items:center;gap:10px;color:var(--heat);font-weight:700;font-size:15px}
+.ringing i{width:10px;height:10px;border-radius:50%;background:var(--heat);animation:ring 1.1s ease-out infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(255,138,61,.7)}100%{box-shadow:0 0 0 14px rgba(255,138,61,0)}}
+.cue{position:absolute;z-index:2;left:50%;bottom:22px;transform:translateX(-50%);color:var(--faint);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none}
+.cue::after{content:"";width:1px;height:34px;background:linear-gradient(var(--faint),transparent);animation:drip 2s ease-in-out infinite}
+@keyframes drip{0%,100%{transform:scaleY(.4);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}}
+/* load sequence: fade up from black, then the lines arrive */
+.blackout{position:absolute;inset:0;background:#000;z-index:5;pointer-events:none;animation:lift 1.6s .1s ease forwards}
+@keyframes lift{to{opacity:0;visibility:hidden}}
+.rise{opacity:0;transform:translateY(26px);animation:rise .9s cubic-bezier(.2,.7,.2,1) forwards}
+.rise.d1{animation-delay:.9s}.rise.d2{animation-delay:1.15s}.rise.d3{animation-delay:1.4s}.rise.d4{animation-delay:1.65s}.rise.d0{animation-delay:.5s}
+@keyframes rise{to{opacity:1;transform:none}}
+
+/* ---- scroll story: the screen pins and the night plays out ---- */
+.story{position:relative;height:420vh}
+.story-pin{position:sticky;top:0;height:100vh;height:100svh;display:flex;align-items:center;overflow:hidden}
+.story-glow{position:absolute;inset:0;background:radial-gradient(60% 60% at 70% 50%,color-mix(in srgb,var(--cool) 10%,transparent),transparent 70%);transition:background 1s}
+.story[data-step="0"] .story-glow{background:radial-gradient(60% 60% at 70% 50%,color-mix(in srgb,var(--heat) 13%,transparent),transparent 70%)}
+.story[data-step="3"] .story-glow{background:radial-gradient(70% 70% at 70% 40%,rgba(255,200,140,.12),transparent 70%)}
+.story-grid{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,auto);gap:clamp(32px,6vw,96px);align-items:center;width:100%}
+.chapters{position:relative;min-height:340px}
+.chapter{position:absolute;inset:0 0 auto 0;display:flex;flex-direction:column;gap:18px;opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease;pointer-events:none}
+.chapter.on{opacity:1;transform:none;pointer-events:auto}
+.chapter .when{font-size:15px;font-weight:700;color:var(--heat);font-variant-numeric:tabular-nums}
+.chapter h2{font-size:clamp(34px,4.6vw,60px)}
+.progress{display:flex;gap:8px;margin-top:36px}
+.progress span{height:3px;width:44px;border-radius:2px;background:var(--line);overflow:hidden;position:relative}
+.progress span i{position:absolute;inset:0;background:var(--heat);transform-origin:left;transform:scaleX(0)}
+
+/* the phone */
+.phone{position:relative;width:300px;height:614px;border-radius:48px;background:#020509;padding:12px;box-shadow:0 0 0 1.5px #2A3A4C,0 60px 120px -40px #000,0 0 80px -20px color-mix(in srgb,var(--cool) 25%,transparent);flex:none}
+.screen{position:relative;height:100%;border-radius:37px;overflow:hidden;background:linear-gradient(180deg,#0F1D2B,#08111A)}
+.notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:96px;height:26px;border-radius:14px;background:#020509;z-index:3}
+.state{position:absolute;inset:0;padding:54px 20px 24px;display:flex;flex-direction:column;opacity:0;transform:scale(.97);transition:opacity .55s ease,transform .55s ease}
+.state.on{opacity:1;transform:none}
+.st-clock{text-align:center;color:var(--dim);font-size:14px;font-variant-numeric:tabular-nums}
+.st-big{text-align:center;font-size:64px;font-weight:300;font-variation-settings:'wdth' 120;line-height:1;margin:16px 0 4px;font-variant-numeric:tabular-nums}
+.st-label{text-align:center;color:var(--dim);font-size:14px}
+.ring-avatar{width:96px;height:96px;border-radius:50%;margin:36px auto 14px;display:grid;place-items:center;background:color-mix(in srgb,var(--heat) 16%,#0F1D2B);color:var(--heat);font-weight:800;font-size:30px;animation:ring 1.1s ease-out infinite}
+.answer-row{margin-top:auto;display:flex;justify-content:space-around}
+.answer-row span{width:64px;height:64px;border-radius:50%;display:grid;place-items:center}
+.answer-row .no{background:#C2412D}.answer-row .yes{background:#2FA864;animation:ring 1.1s ease-out infinite}
+.ai-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ai-dot{width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--cool) 20%,transparent);display:grid;place-items:center;color:var(--cool);font-weight:800;font-size:13px}
+canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
+.bubbles{display:flex;flex-direction:column;gap:8px;font-size:13.5px;line-height:1.4}
+.bubble{padding:9px 12px;border-radius:14px;max-width:88%}
+.bubble.ai{background:color-mix(in srgb,var(--cool) 16%,#0F1D2B);align-self:flex-start;border-bottom-left-radius:4px}
+.bubble.caller{background:#1E2F41;align-self:flex-end;border-bottom-right-radius:4px}
+.cal-day{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.cal-row{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:start;font-size:12.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.cal-row div{border-top:1px solid #1E2F41;min-height:38px;padding-top:6px}
+.cal-event{border-radius:10px;padding:8px 10px;font-size:13px;color:var(--ink);background:#1E2F41;border-left:3px solid var(--dim)}
+.cal-event.new{background:color-mix(in srgb,var(--cool) 22%,#0F1D2B);border-left-color:var(--cool)}
+.state.on .cal-event.new{animation:drop .6s .25s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes drop{from{transform:translateY(-22px) scale(.92);opacity:0}to{transform:none;opacity:1}}
+.notes{display:flex;flex-direction:column;gap:9px;margin-top:22px}
+.note-card{background:rgba(255,255,255,.07);backdrop-filter:blur(8px);border-radius:16px;padding:11px 13px;font-size:13px;line-height:1.35}
+.note-card b{display:block;font-size:12px;color:var(--dim);margin-bottom:3px;font-weight:600}
+.note-card.em b{color:var(--crit)}
+.state.on .note-card{animation:drop .5s cubic-bezier(.2,1.2,.4,1) both}
+.state.on .note-card:nth-child(2){animation-delay:.15s}.state.on .note-card:nth-child(3){animation-delay:.3s}
+.morning{background:linear-gradient(180deg,#2B3E57 0%,#5B5A6E 55%,#C98A62 100%)}
+
 /* ---- responsive ---- */
 @media (max-width:960px){
   .hero,.scenes,.calc,.signup-grid{grid-template-columns:minmax(0,1fr)}
+  .story-grid{grid-template-columns:minmax(0,1fr);justify-items:center;gap:20px;align-content:center}
+  .story-grid > div:first-child{width:100%;max-width:560px}
+  .chapters{min-height:220px;width:100%}
+  .chapter h2{font-size:30px}.chapter .lede{font-size:16px}
+  .progress{margin-top:4px}
+  .phone{width:250px;height:470px;border-radius:40px;padding:10px}
+  .screen{border-radius:31px}
+  .scene-shade{background:linear-gradient(0deg,rgba(13,22,33,1) 0%,rgba(4,8,14,.7) 45%,rgba(4,8,14,.2) 75%)}
   .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:680px){
@@ -211,10 +265,29 @@ footer.foot a{color:var(--dim)}
   .steps,.plans,.rules{grid-template-columns:minmax(0,1fr)}
   form.fs{grid-template-columns:minmax(0,1fr)}
   nav.main a:not(.btn){display:none}
-  .week{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .week .day:nth-child(n+4){display:none}
-  .transcript{height:270px}
+  .clock b{font-size:40px}
+  .scene-copy .lede{font-size:16px}
+  .phone{width:208px;height:392px;border-radius:34px;padding:8px}
+  .screen{border-radius:27px}
+  .notch{width:70px;height:20px;top:8px}
+  .chapters{min-height:236px}
+  .chapter h2{font-size:28px}
+  .state{padding:38px 12px 14px}
+  .bubbles,.cal-event,.note-card{font-size:12px}
+  .cal-row div{min-height:30px}
+  .cal-row:nth-child(n+4){display:none}
+  .story-pin{align-items:flex-start;padding-top:86px}
+  .st-big{font-size:52px}
+  .ring-avatar{width:76px;height:76px;margin-top:20px}
   .tl-axis span:nth-child(even){visibility:hidden}
+}
+@media (max-width:680px) and (max-height:760px){
+  .chapter .lede{font-size:15px;line-height:1.45}
+  .chapters{min-height:196px}
+  .chapter{gap:10px}
+  .chapter h2{font-size:25px}
+  .phone{width:180px;height:330px}
+  .story-pin{padding-top:80px}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
@@ -234,39 +307,80 @@ footer.foot a{color:var(--dim)}
 </div></header>
 
 <main id="top">
-<!-- HERO: a live call plays out, ending with a booking on the schedule -->
-<section class="wrap hero">
-  <div class="hero-copy">
-    <span class="status"><i aria-hidden="true"></i>AI receptionist for heating and cooling companies</span>
-    <h1>Every call answered. Every job booked. Even at 2&nbsp;a.m.</h1>
-    <p class="lede">When your techs are on a roof or the office is closed, AfterHours Desk picks up, books the visit into an open slot, sends emergencies the right way, and texts you what happened.</p>
-    <div class="row">
+<!-- OPENING SCENE: a cold night, a lit window, a phone ringing -->
+<section class="scene" aria-label="A cold night at 2 AM. A homeowner's furnace has stopped and they are calling for help.">
+  <canvas id="night" aria-hidden="true"></canvas>
+  <div class="scene-shade" aria-hidden="true"></div>
+  <div class="scene-content wrap">
+    <div class="clock rise d0"><b id="sceneClock">2:07 AM</b><span>14°F outside · the furnace just quit</span></div>
+    <div class="scene-copy">
+    <span class="ringing rise d1"><i aria-hidden="true"></i>Someone is calling your shop right now</span>
+    <h1 class="rise d2">Every call answered. Every job booked. Even at 2&nbsp;a.m.</h1>
+    <p class="lede rise d3">AfterHours Desk is an AI receptionist for heating and cooling companies. It picks up when you can't, books the visit, sends emergencies the right way, and tells you what happened.</p>
+    <div class="row rise d4">
       <a class="btn" href="#signup">Create my receptionist</a>
-      <a class="btn ghost" href="#calls">Hear how it handles calls</a>
+      <a class="btn ghost" href="#story">Watch what happens next</a>
     </div>
-    <p class="hint">Live in minutes. Keep your phone number. Cancel any month.</p>
   </div>
+  <a class="cue" href="#story">Scroll</a>
+  <div class="blackout" aria-hidden="true"></div>
+</section>
 
-  <div class="device" aria-label="Example call, playing as an animation">
-    <div class="device-top">
-      <div class="caller">
-        <span class="avatar" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span>
-        <div><b>Incoming call · 9:47 PM</b><span class="hint">Sample HVAC company, after hours</span></div>
+<!-- STORY: pinned while scrolling; each step plays the next part of the night -->
+<section class="story" id="story" data-step="0">
+  <div class="story-pin">
+    <div class="story-glow" aria-hidden="true"></div>
+    <div class="wrap story-grid">
+      <div>
+        <div class="chapters">
+          <div class="chapter on" data-ch="0"><span class="when">2:07 AM</span><h2>A furnace quits. The phone rings.</h2><p class="lede">The homeowner calls the first shop that shows up. Your techs are asleep and the office is dark.</p></div>
+          <div class="chapter" data-ch="1"><span class="when">2:07 AM, first ring</span><h2>Your AI receptionist answers.</h2><p class="lede">Calm and local, and honest that it's an AI. It gets the name, the address, and what's wrong.</p></div>
+          <div class="chapter" data-ch="2"><span class="when">2:09 AM</span><h2>The job lands on your schedule.</h2><p class="lede">It checks your open windows, books one, and confirms with the caller. A window can never be booked twice.</p></div>
+          <div class="chapter" data-ch="3"><span class="when">6:45 AM</span><h2>You wake up to a full board.</h2><p class="lede">Every booking and message is waiting for you, with emergencies flagged at the top.</p></div>
+        </div>
+        <div class="progress" aria-hidden="true"><span><i></i></span><span><i></i></span><span><i></i></span><span><i></i></span></div>
       </div>
-      <span class="timer" id="callTimer">00:00</span>
-    </div>
-    <canvas class="wave" id="wave" aria-hidden="true"></canvas>
-    <div class="transcript" id="transcript" aria-live="off"></div>
-    <div class="week" id="week" aria-label="Next week's schedule">
-      <div class="day"><span>Mon</span><div class="slot">Tune-up</div></div>
-      <div class="day"><span>Tue</span><div class="slot">Install est.</div></div>
-      <div class="day" id="bookDay"><span>Wed</span></div>
-      <div class="day"><span>Thu</span><div class="slot">Furnace</div><div class="slot">Tune-up</div></div>
-      <div class="day"><span>Fri</span></div>
-    </div>
-    <div class="device-foot">
-      <span class="hint" id="callState">Example call</span>
-      <button class="replay" id="replay" type="button">Replay call</button>
+
+      <div class="phone" aria-hidden="true"><div class="screen">
+        <div class="notch"></div>
+        <div class="state on" data-st="0">
+          <p class="st-clock">Incoming call</p>
+          <div class="ring-avatar">DR</div>
+          <p class="st-label" style="color:var(--ink);font-size:20px;font-weight:700">(513) 555-0182</p>
+          <p class="st-label">Mason, OH</p>
+          <div class="answer-row"><span class="no"><svg width="26" height="26" viewBox="0 0 24 24" fill="#fff"><path d="M12 9c-1.6 0-3.2.3-4.6.8v3.1c0 .4-.2.7-.6.9-1 .5-1.9 1.1-2.7 1.8-.2.2-.4.3-.7.3-.3 0-.5-.1-.7-.3L.3 13.2c-.2-.2-.3-.4-.3-.7 0-.3.1-.5.3-.7C3.3 9 7.4 7.3 12 7.3s8.7 1.7 11.7 4.5c.2.2.3.4.3.7 0 .3-.1.5-.3.7l-2.4 2.4c-.2.2-.4.3-.7.3-.3 0-.5-.1-.7-.3-.8-.7-1.7-1.3-2.7-1.8-.3-.2-.6-.5-.6-.9V9.8C15.2 9.3 13.6 9 12 9z"/></svg></span><span class="yes"><svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg></span></div>
+        </div>
+        <div class="state" data-st="1">
+          <div class="ai-head"><span class="ai-dot">AI</span><div><b style="font-size:14px">AfterHours Desk</b><div class="hint" style="font-size:12px">On a call · <span id="phoneTimer">00:41</span></div></div></div>
+          <canvas class="mini-wave" id="miniWave"></canvas>
+          <div class="bubbles">
+            <div class="bubble ai">Thanks for calling. How can I help tonight?</div>
+            <div class="bubble caller">Our furnace is blowing cold air and it's freezing.</div>
+            <div class="bubble ai">Let's get a technician out. Can I get your name and address?</div>
+            <div class="bubble caller">Dana Ruiz, 14 Elm Street, Mason.</div>
+          </div>
+        </div>
+        <div class="state" data-st="2">
+          <p class="st-clock">Wednesday</p>
+          <div class="cal-day">
+            <div class="cal-row"><span>8 AM</span><div><div class="cal-event new"><b>Dana Ruiz · furnace</b><br>14 Elm St, Mason · Priority</div></div></div>
+            <div class="cal-row"><span>10 AM</span><div><div class="cal-event">Tune-up · Oakwood</div></div></div>
+            <div class="cal-row"><span>12 PM</span><div></div></div>
+            <div class="cal-row"><span>2 PM</span><div><div class="cal-event">Install estimate</div></div></div>
+            <div class="cal-row"><span>4 PM</span><div></div></div>
+          </div>
+          <div class="bubble ai" style="margin-top:auto">You're booked for Wednesday, 8 to 10 AM. The tech will call on the way.</div>
+        </div>
+        <div class="state morning" data-st="3">
+          <p class="st-clock" style="color:#E9EFF3">Wednesday, November 4</p>
+          <p class="st-big">6:45</p>
+          <div class="notes">
+            <div class="note-card em"><b>EMERGENCY · 11:25 PM</b>CO alarm at 9 Birch Ln. Caller told to get out and call 911.</div>
+            <div class="note-card"><b>Booked · 2:09 AM</b>Dana Ruiz, furnace blowing cold. Wed 8–10 AM.</div>
+            <div class="note-card"><b>Message · 4:40 AM</b>Water leaking from unit. Callback requested.</div>
+          </div>
+        </div>
+      </div></div>
     </div>
   </div>
 </section>
@@ -449,117 +563,225 @@ footer.foot a{color:var(--dim)}
 (() => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ---------- hero: live call ---------- */
-  const SCRIPT = [
-    ['ai', "Thanks for calling, this is the virtual assistant. How can I help tonight?"],
-    ['caller', "Our furnace is blowing cold air and it's freezing in here."],
-    ['ai', "Sorry about that. Let's get a technician out. Can I get your name?"],
-    ['caller', "Dana Ruiz."],
-    ['ai', "Thanks, Dana. And the address?"],
-    ['caller', "14 Elm Street, Mason."],
-    ['tool', "Checked the schedule: Wednesday 8 to 10 AM is open."],
-    ['ai', "I have Wednesday from 8 to 10 in the morning. Does that work?"],
-    ['caller', "Yes, perfect."],
-    ['ai', "You're booked for Wednesday, 8 to 10 AM. The tech will call when they're on the way."],
-  ];
-  const WHO = { ai: 'AI', caller: 'Caller', tool: 'System' };
-  const tEl = document.getElementById('transcript');
-  const timerEl = document.getElementById('callTimer');
-  const stateEl = document.getElementById('callState');
-  const bookDay = document.getElementById('bookDay');
-  const canvas = document.getElementById('wave');
-  const ctx = canvas.getContext('2d');
-  let speaker = null, runId = 0, started = 0, raf = 0;
+  /* ---------- opening scene: night, snow, a lit window, a phone ringing ---------- */
+  (() => {
+    const canvas = document.getElementById('night');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const scene = canvas.parentElement;
+    let W = 0, H = 0, dpr = 1, stars = [], flakes = [], raf = 0, visible = true;
+    const rand = (a, b) => a + Math.random() * (b - a);
 
-  function sizeCanvas() {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-  sizeCanvas(); addEventListener('resize', sizeCanvas);
-
-  // Waveform: bars driven by layered sine noise; louder and colored by whoever is talking.
-  function draw(t) {
-    const w = canvas.clientWidth, h = canvas.clientHeight, n = Math.floor(w / 6);
-    ctx.clearRect(0, 0, w, h);
-    const color = speaker === 'caller' ? '#FF8A3D' : speaker === 'ai' ? '#5CC8FF' : '#3A5268';
-    const amp = speaker === 'ai' || speaker === 'caller' ? 1 : 0.12;
-    ctx.fillStyle = color;
-    for (let i = 0; i < n; i++) {
-      const x = i * 6 + 1;
-      const v = Math.abs(Math.sin(i * 0.35 + t / 170) * 0.5 + Math.sin(i * 0.11 - t / 260) * 0.35 + Math.sin(i * 1.7 + t / 90) * 0.15);
-      const bh = Math.max(3, v * amp * (h - 8));
-      ctx.globalAlpha = 0.35 + 0.65 * (1 - Math.abs(i / n - 0.5) * 1.4);
-      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, (h - bh) / 2, 3, bh, 2) : ctx.rect(x, (h - bh) / 2, 3, bh); ctx.fill();
+    function build() {
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      W = scene.clientWidth; H = scene.clientHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      stars = Array.from({ length: Math.round(W * H / 9000) }, () => ({ x: rand(0, W), y: rand(0, H * 0.6), r: rand(0.3, 1.3), p: rand(0, 6.28) }));
+      const count = Math.round(Math.min(380, W * H / 4200));
+      flakes = Array.from({ length: count }, () => {
+        const z = Math.random(); // depth: 0 far, 1 near
+        return { x: rand(0, W), y: rand(-H, H), z, r: 0.6 + z * 2.6, vy: 18 + z * 70, sway: rand(0, 6.28) };
+      });
     }
-    ctx.globalAlpha = 1;
-    if (started) {
-      const s = Math.floor((Date.now() - started) / 1000);
-      timerEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-    }
-    raf = requestAnimationFrame(draw);
-  }
 
-  const wait = (ms, id) => new Promise((r) => setTimeout(() => r(id === runId), ms));
-
-  function addLine(kind) {
-    const line = document.createElement('div');
-    line.className = `line ${kind}`;
-    const who = document.createElement('span'); who.className = 'who'; who.textContent = WHO[kind];
-    const say = document.createElement('span'); say.className = 'say';
-    line.append(who, say); tEl.append(line);
-    while (tEl.children.length > 9) tEl.firstChild.remove();
-    return say;
-  }
-
-  function placeBooking() {
-    bookDay.querySelector('.slot.new')?.remove();
-    const s = document.createElement('div'); s.className = 'slot new'; s.textContent = 'Dana R. 8–10'; bookDay.append(s);
-  }
-
-  async function play() {
-    const id = ++runId;
-    tEl.textContent = ''; bookDay.querySelector('.slot.new')?.remove();
-    started = Date.now(); stateEl.textContent = 'Call in progress';
-    for (const [kind, text] of SCRIPT) {
-      const say = addLine(kind);
-      speaker = kind === 'tool' ? null : kind;
-      const cur = document.createElement('span'); cur.className = 'cursor';
-      for (let i = 1; i <= text.length; i++) {
-        say.textContent = text.slice(0, i); say.append(cur);
-        if (!(await wait(kind === 'tool' ? 12 : 26, id))) return;
+    // Where the house sits: right side on wide screens, centre-right on phones.
+    function houseFrame() {
+      if (W <= 760) {
+        // Phones: a small house up beside the clock, so the text below never covers it.
+        return { s: Math.min(0.5, W / 820), cx: W * 0.76, ground: Math.min(H * 0.34, 300) };
       }
-      cur.remove();
-      if (kind === 'tool') placeBooking();
-      speaker = null;
-      if (!(await wait(kind === 'caller' ? 380 : 520, id))) return;
+      return { s: Math.max(0.55, (Math.min(W, H) / 900) * 1.25), cx: W * 0.7, ground: H * 0.8 };
     }
-    started = 0; stateEl.textContent = 'Booked. Summary sent to the owner.';
-    if (await wait(6000, id)) play();
-  }
 
-  function showStatic() {
-    tEl.textContent = '';
-    for (const [kind, text] of SCRIPT.slice(-7)) addLine(kind).textContent = text;
-    placeBooking(); timerEl.textContent = '01:12'; stateEl.textContent = 'Booked. Summary sent to the owner.';
-    speaker = null;
-  }
+    function drawHouse(t, push) {
+      const { s: base, cx, ground } = houseFrame();
+      const s = base * push;
+      const bw = 300 * s, bh = 170 * s, roof = 120 * s;
+      const x = cx - bw / 2, y = ground - bh;
+      // the window glow behind everything near it
+      const wx = x + bw * 0.62, wy = y + bh * 0.3, ww = 58 * s, wh = 52 * s;
+      const flicker = 0.92 + Math.sin(t / 900) * 0.04 + Math.sin(t / 137) * 0.02;
+      const g = ctx.createRadialGradient(wx + ww / 2, wy + wh / 2, 4, wx + ww / 2, wy + wh / 2, 260 * s);
+      g.addColorStop(0, `rgba(255,170,90,${0.38 * flicker})`); g.addColorStop(1, 'rgba(255,170,90,0)');
+      ctx.fillStyle = g; ctx.fillRect(wx - 300 * s, wy - 300 * s, 600 * s, 600 * s);
+      // body and roof
+      ctx.fillStyle = '#03070C';
+      ctx.beginPath();
+      ctx.moveTo(x - 18 * s, y);
+      ctx.lineTo(cx, y - roof);
+      ctx.lineTo(x + bw + 18 * s, y);
+      ctx.closePath(); ctx.fill();
+      ctx.fillRect(x, y, bw, bh + 2);
+      // chimney
+      ctx.fillRect(x + bw * 0.72, y - roof * 0.78, 26 * s, roof * 0.62);
+      // snow on the roof
+      ctx.strokeStyle = 'rgba(200,225,245,.55)'; ctx.lineWidth = 3.5 * s; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(x - 14 * s, y - 2 * s); ctx.lineTo(cx, y - roof - 2 * s); ctx.lineTo(x + bw + 14 * s, y - 2 * s); ctx.stroke();
+      // dark window and door
+      ctx.fillStyle = '#0B1520';
+      ctx.fillRect(x + bw * 0.14, y + bh * 0.3, ww, wh);
+      ctx.fillRect(x + bw * 0.4, y + bh * 0.42, 40 * s, bh * 0.58);
+      // the lit window, with a cross frame
+      ctx.fillStyle = `rgba(255,${176 + Math.round(10 * flicker)},106,${flicker})`;
+      ctx.fillRect(wx, wy, ww, wh);
+      ctx.fillStyle = '#03070C';
+      ctx.fillRect(wx + ww / 2 - 1.5 * s, wy, 3 * s, wh);
+      ctx.fillRect(wx, wy + wh / 2 - 1.5 * s, ww, 3 * s);
+      // a phone ringing inside: rings pulse out from the window
+      if (!reduce) {
+        for (let k = 0; k < 3; k++) {
+          const ph = ((t / 1400) + k / 3) % 1;
+          ctx.strokeStyle = `rgba(255,138,61,${(1 - ph) * 0.55})`;
+          ctx.lineWidth = 2 * s;
+          ctx.beginPath(); ctx.arc(wx + ww / 2, wy + wh / 2, 20 * s + ph * 150 * s, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      // smoke-less chimney tells the story: no heat
+      return { ground };
+    }
 
-  document.getElementById('replay').addEventListener('click', () => { reduce ? showStatic() : play(); });
-  if (reduce) { showStatic(); draw(0); cancelAnimationFrame(raf); }
-  else {
-    // Pause the animation when the device is off screen.
-    let visible = true;
+    function frame(t) {
+      const scrolled = Math.min(1, Math.max(0, window.scrollY / (H || 1)));
+      const push = 1 + scrolled * 0.35; // slow camera push-in while scrolling away
+      // sky
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#03060B'); sky.addColorStop(0.55, '#0A1726'); sky.addColorStop(1, '#13263A');
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+      // moon haze
+      const mx = W <= 760 ? W * 0.5 : W * 0.86, my = W <= 760 ? H * 0.1 : H * 0.16;
+      const mg = ctx.createRadialGradient(mx, my, 0, mx, my, Math.max(W, H) * 0.35);
+      mg.addColorStop(0, 'rgba(160,205,255,.16)'); mg.addColorStop(1, 'rgba(160,205,255,0)');
+      ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(225,240,255,.9)';
+      ctx.beginPath(); ctx.arc(mx, my, Math.max(11, Math.min(W, H) * 0.03), 0, Math.PI * 2); ctx.fill();
+      // stars
+      for (const st of stars) {
+        ctx.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(st.p + t / 1800));
+        ctx.fillStyle = '#DCEBFF';
+        ctx.fillRect(st.x, st.y, st.r, st.r);
+      }
+      ctx.globalAlpha = 1;
+      // far hills
+      const hillY = houseFrame().ground - Math.min(H * 0.08, 60);
+      ctx.fillStyle = '#0B1724';
+      ctx.beginPath(); ctx.moveTo(0, hillY + 10);
+      for (let x = 0; x <= W; x += 40) ctx.lineTo(x, hillY + Math.sin(x / 210) * 16 + Math.sin(x / 77) * 6);
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+      // far snow (behind the house)
+      drawSnow(t, 0, 0.45);
+      const { ground } = drawHouse(t, push);
+      // snowy ground
+      const gg = ctx.createLinearGradient(0, ground, 0, H);
+      gg.addColorStop(0, '#1C3047'); gg.addColorStop(1, '#0D1621');
+      ctx.fillStyle = gg;
+      ctx.beginPath(); ctx.moveTo(0, ground + 8);
+      for (let x = 0; x <= W; x += 30) ctx.lineTo(x, ground + Math.sin(x / 260) * 6);
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.fill();
+      // near snow (in front)
+      drawSnow(t, 0.45, 1);
+      raf = visible ? requestAnimationFrame(frame) : 0;
+    }
+
+    let last = 0;
+    function drawSnow(t, zMin, zMax) {
+      const dt = last ? Math.min(0.05, (t - last) / 1000) : 0.016;
+      if (zMax === 1) last = t;
+      for (const f of flakes) {
+        if (f.z < zMin || f.z >= zMax) continue;
+        if (!reduce) {
+          f.y += f.vy * dt;
+          f.x += Math.sin(t / 1300 + f.sway) * (0.2 + f.z * 0.6) + 12 * dt * f.z;
+          if (f.y > H + 10) { f.y = -10; f.x = rand(-40, W); }
+          if (f.x > W + 10) f.x = -10;
+        }
+        ctx.globalAlpha = 0.25 + f.z * 0.7;
+        ctx.fillStyle = '#EAF4FF';
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    build();
+    let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(build, 120); });
     new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
-      if (visible && !raf) raf = requestAnimationFrame(draw);
-      if (!visible) { cancelAnimationFrame(raf); raf = 0; }
-    }).observe(canvas);
-    raf = requestAnimationFrame(draw);
-    play();
-  }
+      if (visible && !raf && !reduce) raf = requestAnimationFrame(frame);
+    }).observe(scene);
+    if (reduce) frame(0); else raf = requestAnimationFrame(frame);
+
+    // The clock keeps time from 2:07 AM.
+    const clock = document.getElementById('sceneClock');
+    const t0 = Date.now();
+    setInterval(() => {
+      const sec = 7 * 60 + Math.floor((Date.now() - t0) / 1000);
+      const m = Math.floor(sec / 60) % 60;
+      clock.textContent = `2:${String(m).padStart(2, '0')} AM`;
+    }, 1000);
+  })();
+
+  /* ---------- scroll story: pinned screen, four steps ---------- */
+  (() => {
+    const story = document.getElementById('story');
+    if (!story) return;
+    const chapters = [...story.querySelectorAll('.chapter')];
+    const states = [...story.querySelectorAll('.state')];
+    const bars = [...story.querySelectorAll('.progress i')];
+    const STEPS = chapters.length;
+    let step = -1;
+
+    function setStep(n) {
+      if (n === step) return;
+      step = n; story.dataset.step = n;
+      chapters.forEach((c, i) => c.classList.toggle('on', i === n));
+      states.forEach((s, i) => s.classList.toggle('on', i === n));
+    }
+
+    function onScroll() {
+      const r = story.getBoundingClientRect();
+      const total = story.offsetHeight - innerHeight;
+      const p = Math.min(1, Math.max(0, -r.top / (total || 1)));
+      const pos = p * STEPS;
+      setStep(Math.min(STEPS - 1, Math.floor(pos)));
+      bars.forEach((b, i) => { b.style.transform = `scaleX(${Math.min(1, Math.max(0, pos - i))})`; });
+    }
+
+    if (reduce) {
+      // No pinning: show the morning summary, the end of the story.
+      story.style.height = 'auto';
+      setStep(3);
+    } else {
+      addEventListener('scroll', onScroll, { passive: true });
+      addEventListener('resize', onScroll);
+      onScroll();
+    }
+
+    // A small live waveform on the phone while the AI is talking.
+    const c = document.getElementById('miniWave');
+    const ctx = c.getContext('2d');
+    const t0 = Date.now();
+    function wave(t) {
+      if (step === 1 && !reduce) {
+        const dpr = Math.min(devicePixelRatio || 1, 2), w = c.clientWidth, h = c.clientHeight;
+        if (c.width !== w * dpr) { c.width = w * dpr; c.height = h * dpr; }
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+        const talking = Math.sin(t / 1600) > -0.2;
+        ctx.fillStyle = talking ? '#5CC8FF' : '#FF8A3D';
+        for (let i = 0; i < w / 5; i++) {
+          const v = Math.abs(Math.sin(i * 0.4 + t / 160) * 0.55 + Math.sin(i * 0.13 - t / 240) * 0.45);
+          const bh = Math.max(2, v * (h - 6));
+          ctx.fillRect(i * 5, (h - bh) / 2, 2.5, bh);
+        }
+        const s = 41 + Math.floor((Date.now() - t0) / 1000);
+        document.getElementById('phoneTimer').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+      }
+      requestAnimationFrame(wave);
+    }
+    requestAnimationFrame(wave);
+  })();
 
   /* ---------- scenarios ---------- */
+  const WHO = { ai: 'AI', caller: 'Caller', tool: 'System' };
   const SCENES = {
     book: { lines: [
       ['caller', 'My AC is making a grinding noise and barely cooling.'],
