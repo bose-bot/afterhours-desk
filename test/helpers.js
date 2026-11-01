@@ -29,6 +29,7 @@ export function fakeVapi({ failPhone = false, numberLater = false, availableArea
       return { id: `pn_${++n}`, number: numberLater ? undefined : '+15135550199' };
     },
     async getPhoneNumber(id) { calls.push(['getPhoneNumber', id]); return { id, number: '+15135550177' }; },
+    async updatePhoneNumber(id, body) { calls.push(['updatePhoneNumber', id, body]); return { id }; },
   };
 }
 
@@ -60,7 +61,7 @@ export async function freshDb() {
   };
 }
 
-export async function startApp({ env = {}, vapi = fakeVapi(), now } = {}) {
+export async function startApp({ env = {}, vapi = fakeVapi(), now, fetchImpl, lookup } = {}) {
   const config = loadConfig({
     PUBLIC_URL: 'https://desk.example.com',
     VAPI_API_KEY: 'test',
@@ -72,7 +73,7 @@ export async function startApp({ env = {}, vapi = fakeVapi(), now } = {}) {
   });
   const { db, drop } = await freshDb();
   const mailer = fakeMailer();
-  const app = createApp({ db, vapi, mailer, config, logger: quietLogger, numberPollDelayMs: 0, now });
+  const app = createApp({ db, vapi, mailer, config, logger: quietLogger, numberPollDelayMs: 0, now, fetchImpl, lookup });
   const server = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
   const base = `http://127.0.0.1:${server.address().port}`;
 

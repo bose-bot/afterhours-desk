@@ -44,5 +44,6 @@ export function createVapiClient({ apiKey, baseUrl = 'https://api.vapi.ai', fetc
     updateAssistant: (id, body) => call('PATCH', `/assistant/${encodeURIComponent(id)}`, body),
     createPhoneNumber: (body) => call('POST', '/phone-number', body),
     getPhoneNumber: (id) => call('GET', `/phone-number/${encodeURIComponent(id)}`),
+    updatePhoneNumber: (id, body) => call('PATCH', `/phone-number/${encodeURIComponent(id)}`, body),
   };
 }

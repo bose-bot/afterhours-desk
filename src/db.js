@@ -127,7 +127,7 @@ export async function openDb(target) {
     },
 
     async findClientByEmail(email) {
-      return rowToClient(await one('SELECT * FROM clients WHERE email = ? ORDER BY created_at DESC LIMIT 1', [email]));
+      return rowToClient(await one("SELECT * FROM clients WHERE email = ? AND status <> 'demo' ORDER BY created_at DESC LIMIT 1", [email]));
     },
 
     async listClients() {
@@ -140,9 +140,10 @@ export async function openDb(target) {
     },
 
     async updateClient(id, fields) {
-      const map = { status: 'status', vapiAssistantId: 'vapi_assistant_id', vapiPhoneId: 'vapi_phone_id', phoneNumber: 'phone_number', error: 'error' };
+      const map = { status: 'status', vapiAssistantId: 'vapi_assistant_id', vapiPhoneId: 'vapi_phone_id', phoneNumber: 'phone_number', error: 'error', business: 'business', email: 'email' };
       const sets = [], vals = [];
       for (const [k, col] of Object.entries(map)) if (k in fields) { sets.push(`${col} = ?`); vals.push(fields[k]); }
+      if ('details' in fields) { sets.push('details = ?'); vals.push(JSON.stringify(fields.details)); }
       if (sets.length) {
         sets.push('updated_at = ?');
         vals.push(now(), id);
@@ -199,6 +200,10 @@ export async function openDb(target) {
       await d.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO NOTHING', [key, value]);
       const stored = await api.getSetting(key);
       return { value: stored, created: stored === value };
+    },
+
+    async setSetting(key, value) {
+      await d.run('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value', [key, value]);
     },
 
     close: () => d.close(),

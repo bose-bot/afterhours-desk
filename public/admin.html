@@ -58,6 +58,12 @@ tr.sel td{background:var(--surface-2)}
 dl{margin:0;display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 14px}
 dt{color:var(--muted)}dd{margin:0;min-width:0;overflow-wrap:anywhere}
 details summary{cursor:pointer;color:var(--cool);font-weight:600}
+label{display:block;font-weight:600;font-size:14px;margin-bottom:6px}
+.demo-card{border-color:color-mix(in srgb,var(--cool) 45%,var(--line))}
+.demo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.demo-grid{grid-template-columns:minmax(0,1fr)}}
+.demo-result{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--line)}
+.demo-num{font-size:clamp(30px,4vw,44px);font-weight:900;color:var(--cool);font-variation-settings:'wdth' 118;user-select:all}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-size:13.5px;line-height:1.55;background:var(--bg);padding:10px;border-radius:8px;margin:6px 0 0;max-height:280px;overflow:auto}
 </style>
 </head>
@@ -80,6 +86,21 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
   <section id="app" hidden style="flex-direction:column;gap:22px">
     <p class="note err" id="appErr" hidden></p>
     <p class="note" id="appOk" role="status" hidden style="color:var(--ok);background:var(--ok-bg)"></p>
+    <form class="card demo-card" id="demoForm">
+      <div class="row spread"><h2>Build a demo for a prospect</h2><span class="hint" id="demoNow"></span></div>
+      <p class="hint">Your demo number starts answering as their shop in about a minute. Call summaries from demo calls come to you.</p>
+      <div class="demo-grid">
+        <div><label for="d_business">Shop name</label><input id="d_business" required maxlength="80" placeholder="Queen City Comfort"></div>
+        <div><label for="d_website">Their website</label><input id="d_website" maxlength="300" placeholder="queencitycomfort.com"></div>
+        <div><label for="d_area">Service area (optional)</label><input id="d_area" maxlength="300" placeholder="Cincinnati, Norwood, Mason"></div>
+      </div>
+      <div class="row"><button class="btn" type="submit" id="demoBtn">Build demo</button><span class="hint" id="demoStatus" role="status"></span></div>
+      <div id="demoResult" hidden class="demo-result">
+        <span class="hint">Call now. It answers as <b id="demoBiz"></b>:</span>
+        <b class="demo-num" id="demoNum"></b>
+        <details><summary>What it learned from their website</summary><pre id="demoLearned"></pre></details>
+      </div>
+    </form>
     <div class="stats">
       <div class="stat hot" id="statPending"><span class="muted">Waiting for approval</span><b id="nPending">0</b></div>
       <div class="stat"><span class="muted">Live</span><b id="nActive">0</b></div>
@@ -226,6 +247,34 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     if (msg) { $('#loginErr').textContent = msg; $('#loginErr').hidden = false; }
   }
 
+
+  async function loadDemo() {
+    try {
+      const { demo } = await api('GET', '/api/admin/demo');
+      $('#demoNow').textContent = demo?.phoneNumber ? `Demo line ${pretty(demo.phoneNumber)} is answering as ${demo.business}` : 'No demo line yet. Your first demo creates one.';
+    } catch {}
+  }
+  $('#demoForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = $('#demoBtn'); btn.disabled = true; btn.textContent = 'Building…';
+    $('#demoStatus').textContent = 'Reading their website and writing the script…'; $('#appErr').hidden = true;
+    try {
+      const r = await fetch('/api/admin/demo', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business: $('#d_business').value, website: $('#d_website').value, area: $('#d_area').value }) });
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 401) { signOut('That token was not accepted. Sign in again.'); return; }
+      if (!r.ok) { $('#demoStatus').textContent = data.error || 'Could not build the demo. Try again.'; return; }
+      const d = data.demo;
+      $('#demoBiz').textContent = d.business;
+      $('#demoNum').textContent = d.phoneNumber ? pretty(d.phoneNumber) : 'Number activating, refresh in a minute';
+      $('#demoLearned').textContent = d.learned || 'No website given. It uses the shop name and service area only.';
+      $('#demoResult').hidden = false;
+      $('#demoStatus').textContent = 'Ready. A brand-new demo number can take a few minutes before it rings.';
+      loadDemo();
+    } catch {
+      $('#demoStatus').textContent = 'Could not reach the server. Check your connection and try again.';
+    } finally { btn.disabled = false; btn.textContent = 'Build demo'; }
+  });
   $('#login').addEventListener('submit', async (e) => {
     e.preventDefault();
     token = $('#token').value.trim();
@@ -235,12 +284,12 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     catch (err) { $('#loginErr').textContent = err.message; $('#loginErr').hidden = false; return; }
     try { sessionStorage.setItem('adminToken', token); } catch {}
     $('#token').value = '';
-    showApp(true); load();
+    showApp(true); load(); loadDemo();
   });
   $('#refresh').addEventListener('click', load);
   $('#logout').addEventListener('click', () => signOut());
 
-  if (token) { showApp(true); load(); } else showApp(false);
+  if (token) { showApp(true); load(); loadDemo(); } else showApp(false);
 })();
 </script>
 </body>

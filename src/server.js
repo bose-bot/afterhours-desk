@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateSignup } from './validate.js';
 import { provisionClient, refreshNumber, updateScript } from './provision.js';
+import { buildDemo, currentDemo } from './demo.js';
+import { WebsiteError } from './website.js';
 import { createWebhookHandler, isAuthorized } from './webhook.js';
 import { timingSafeEqual } from 'node:crypto';
 
@@ -107,7 +109,17 @@ export function createApp(deps) {
     if (!want.length || given.length !== want.length || !timingSafeEqual(given, want)) return res.status(401).json({ error: 'unauthorized' });
     next();
   });
-  admin.get('/clients', wrap(async (_req, res) => res.json({ clients: await db.listClients() })));
+  admin.get('/clients', wrap(async (_req, res) => res.json({ clients: (await db.listClients()).filter((c) => c.status !== 'demo') })));
+  admin.get('/demo', wrap(async (_req, res) => res.json({ demo: await currentDemo(deps) })));
+  admin.post('/demo', async (req, res) => {
+    try {
+      res.json({ ok: true, demo: await buildDemo(req.body || {}, deps) });
+    } catch (e) {
+      if (e instanceof WebsiteError || e.status === 400) return res.status(400).json({ error: e.message });
+      logger.error(`[demo] ${e.message}`);
+      res.status(502).json({ error: e.message });
+    }
+  });
   admin.get('/clients/:id', wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'not found' });
