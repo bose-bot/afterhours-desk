@@ -31,7 +31,8 @@ test('sign-up goes live automatically: assistant, number, emails', async () => {
     assert.match(t.mailer.sent[0].text, /\(513\) 555-0199/);
 
     const status = await t.req('GET', `/api/signup/${id}`);
-    assert.deepEqual(status.json.client, { id, business: 'Maple Row Heating & Air', status: 'active', phoneNumber: '+15135550199' });
+    assert.deepEqual(status.json.client, { id, business: 'Maple Row Heating & Air', status: 'active', phoneNumber: '+15135550199', steps: { script: true, number: true } });
+    assert.equal(status.json.client.vapiAssistantId, undefined, 'internal ids stay private');
     assert.equal(status.json.client.email, undefined, 'status endpoint must not expose contact details');
   } finally { await t.close(); }
 });

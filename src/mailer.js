@@ -7,12 +7,12 @@ export function createMailer(mail, { logger = console, fetchImpl = globalThis.fe
     return {
       enabled: true,
       provider: 'resend',
-      async send({ to, subject, text }) {
+      async send({ to, subject, text, html }) {
         if (!to) return;
         const res = await fetchImpl('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${mail.resendApiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from: mail.from, to: [to], subject, text }),
+          body: JSON.stringify({ from: mail.from, to: [to], subject, text, ...(html ? { html } : {}) }),
         });
         if (!res.ok) throw new Error(`Resend refused the email (${res.status}): ${(await res.text()).slice(0, 200)}`);
       },
@@ -29,9 +29,9 @@ export function createMailer(mail, { logger = console, fetchImpl = globalThis.fe
     return {
       enabled: true,
       provider: 'smtp',
-      async send({ to, subject, text }) {
+      async send({ to, subject, text, html }) {
         if (!to) return;
-        await transport.sendMail({ from: mail.from, to, subject, text });
+        await transport.sendMail({ from: mail.from, to, subject, text, ...(html ? { html } : {}) });
       },
     };
   }

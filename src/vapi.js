@@ -41,6 +41,7 @@ export function createVapiClient({ apiKey, baseUrl = 'https://api.vapi.ai', fetc
   return {
     createAssistant: (body) => call('POST', '/assistant', body),
     deleteAssistant: (id) => call('DELETE', `/assistant/${encodeURIComponent(id)}`),
+    updateAssistant: (id, body) => call('PATCH', `/assistant/${encodeURIComponent(id)}`, body),
     createPhoneNumber: (body) => call('POST', '/phone-number', body),
     getPhoneNumber: (id) => call('GET', `/phone-number/${encodeURIComponent(id)}`),
   };

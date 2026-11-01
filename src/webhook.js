@@ -1,6 +1,7 @@
 // Handles what Vapi sends during and after calls: tool calls (booking) and end-of-call reports.
 import { timingSafeEqual } from 'node:crypto';
 import { openSlots } from './scheduling.js';
+import { callSummaryEmail } from './emails.js';
 
 const URGENCIES = ['Emergency', 'Priority', 'Routine'];
 const clip = (v, n = 300) => (v == null ? '' : String(v)).trim().slice(0, n);
@@ -98,15 +99,8 @@ export function createWebhookHandler({ db, mailer, config, logger = console, now
       await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80) });
 
       const items = (await db.listBookings(client.id)).filter((b) => b.call_id === callId);
-      const lines = items.map((b) => b.kind === 'booking'
-        ? `BOOKED ${b.slot_label}: ${b.caller_name} ${b.caller_phone} | ${b.address} | ${b.issue} [${b.urgency}]`
-        : `MESSAGE [${b.urgency}]: ${b.caller_name || 'Unknown'} ${b.caller_phone || callerPhone} | ${b.issue}`);
-      const urgent = items.some((b) => b.urgency === 'Emergency');
-      mailer.send({
-        to: client.email,
-        subject: `${urgent ? 'EMERGENCY · ' : ''}Call summary: ${items[0]?.caller_name || callerPhone || 'new caller'}`,
-        text: `${lines.length ? lines.join('\n') + '\n\n' : ''}Caller: ${callerPhone || 'unknown'}\n\nSummary:\n${summary || '(no summary)'}\n`,
-      }).catch((e) => logger.error(`[mail] call summary failed: ${e.message}`));
+      mailer.send(callSummaryEmail(config, client, { items, callerPhone, summary })
+      ).catch((e) => logger.error(`[mail] call summary failed: ${e.message}`));
     }
 
     return res.status(200).json({});

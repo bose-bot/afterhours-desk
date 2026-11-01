@@ -247,6 +247,35 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
 .state.on .note-card:nth-child(2){animation-delay:.15s}.state.on .note-card:nth-child(3){animation-delay:.3s}
 .morning{background:linear-gradient(180deg,#2B3E57 0%,#5B5A6E 55%,#C98A62 100%)}
 
+/* ---- sign-up success: the receptionist being built, then the number reveal ---- */
+.launch{position:relative;overflow:hidden;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:clamp(22px,3vw,36px);display:flex;flex-direction:column;gap:20px;animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+.launch-kicker{color:var(--cool);font-weight:700;font-size:15px}
+.launch h3{font-size:clamp(26px,3vw,36px);font-variation-settings:'wdth' 118;line-height:1.1;margin-top:-10px}
+.launch-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.launch-steps li{position:relative;display:flex;gap:16px;padding-bottom:22px;opacity:.45;transition:opacity .4s}
+.launch-steps li:last-child{padding-bottom:0}
+.launch-steps li::before{content:"";position:absolute;left:13px;top:30px;bottom:2px;width:2px;background:var(--line);transition:background .6s}
+.launch-steps li:last-child::before{display:none}
+.launch-steps li div{display:flex;flex-direction:column;gap:2px;padding-top:3px}
+.launch-steps li b{font-size:17px;font-variation-settings:'wdth' 108}
+.launch-steps li span:not(.dot){color:var(--dim);font-size:14.5px}
+.dot{position:relative;flex:none;width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:var(--night)}
+.launch-steps li.work,.launch-steps li.done,.launch-steps li.fail,.launch-steps li.wait{opacity:1}
+.launch-steps li.work .dot{border-color:color-mix(in srgb,var(--cool) 25%,transparent);border-top-color:var(--cool);animation:spin .9s linear infinite}
+.launch-steps li.wait .dot{border-color:var(--heat);box-shadow:0 0 0 0 color-mix(in srgb,var(--heat) 50%,transparent);animation:ping 2.2s infinite}
+.launch-steps li.done .dot{border-color:var(--ok);background:var(--ok)}
+.launch-steps li.done .dot::after{content:"";position:absolute;left:8px;top:4px;width:7px;height:12px;border:solid #07261A;border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.launch-steps li.done::before{background:var(--ok)}
+.launch-steps li.fail .dot{border-color:var(--crit);background:color-mix(in srgb,var(--crit) 20%,transparent)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.reveal{display:flex;flex-direction:column;gap:20px;padding-top:20px;border-top:1px solid var(--line);animation:rise .7s cubic-bezier(.2,.7,.2,1) both}
+.reveal-num{position:relative;display:flex;align-items:center;min-height:84px}
+.reveal-num b{position:relative;font-size:clamp(38px,5vw,58px);font-weight:900;font-variation-settings:'wdth' 118;letter-spacing:-.02em;color:var(--cool);user-select:all;z-index:1}
+.rings{position:absolute;left:0;top:50%;width:0;height:0}
+.rings i{position:absolute;left:44px;top:0;width:12px;height:12px;transform:translate(-50%,-50%);border-radius:50%;border:1.5px solid var(--cool);opacity:0;animation:wave 2.4s ease-out infinite}
+.rings i:nth-child(2){animation-delay:.8s}.rings i:nth-child(3){animation-delay:1.6s}
+@keyframes wave{0%{width:12px;height:12px;opacity:.75}100%{width:300px;height:300px;opacity:0}}
+
 /* ---- responsive ---- */
 @media (max-width:960px){
   .hero,.scenes,.calc,.signup-grid{grid-template-columns:minmax(0,1fr)}
@@ -354,7 +383,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
           <div class="ai-head"><span class="ai-dot">AI</span><div><b style="font-size:14px">AfterHours Desk</b><div class="hint" style="font-size:12px">On a call · <span id="phoneTimer">00:41</span></div></div></div>
           <canvas class="mini-wave" id="miniWave"></canvas>
           <div class="bubbles">
-            <div class="bubble ai">Thanks for calling. How can I help tonight?</div>
+            <div class="bubble ai">Thanks for calling, this is the virtual assistant. How can I help?</div>
             <div class="bubble caller">Our furnace is blowing cold air and it's freezing.</div>
             <div class="bubble ai">Let's get a technician out. Can I get your name and address?</div>
             <div class="bubble caller">Dana Ruiz, 14 Elm Street, Mason.</div>
@@ -369,7 +398,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
             <div class="cal-row"><span>2 PM</span><div><div class="cal-event">Install estimate</div></div></div>
             <div class="cal-row"><span>4 PM</span><div></div></div>
           </div>
-          <div class="bubble ai" style="margin-top:auto">You're booked for Wednesday, 8 to 10 AM. The tech will call on the way.</div>
+          <div class="bubble ai" style="margin-top:auto">You're booked for Wednesday, 8 to 10 AM. The tech will call when they're on the way.</div>
         </div>
         <div class="state morning" data-st="3">
           <p class="st-clock" style="color:#E9EFF3">Wednesday, November 4</p>
@@ -545,11 +574,20 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     <div class="field full row"><button class="btn" type="submit" id="signupBtn">Create my receptionist</button><span class="hint">By submitting you agree to our <a href="/privacy">privacy policy</a>. Don't include passwords or payment details.</span></div>
     <p class="field full" id="formError" role="alert" hidden style="font-weight:600"></p>
   </form>
-  <div id="signupDone" class="card" hidden aria-live="polite" style="gap:12px">
-    <span class="eyebrow">You're signed up</span>
-    <h3 id="doneTitle">Setting up your receptionist…</h3>
+  <div id="signupDone" class="launch" hidden aria-live="polite">
+    <p class="launch-kicker" id="doneKicker">Setting up your receptionist</p>
+    <h3 id="doneTitle">Building it now.</h3>
+    <ol class="launch-steps" id="launchSteps">
+      <li data-k="details" class="done"><span class="dot" aria-hidden="true"></span><div><b>Shop details received</b><span>Hours, service area and fees</span></div></li>
+      <li data-k="script"><span class="dot" aria-hidden="true"></span><div><b>Writing its script</b><span id="scriptNote">Your greeting, booking flow and safety rules</span></div></li>
+      <li data-k="number"><span class="dot" aria-hidden="true"></span><div><b>Getting a local phone number</b><span>Your area code when one is available</span></div></li>
+      <li data-k="live"><span class="dot" aria-hidden="true"></span><div><b>Live</b><span>Your number appears here</span></div></li>
+    </ol>
+    <div class="reveal" id="reveal" hidden>
+      <div class="reveal-num"><span class="rings" aria-hidden="true"><i></i><i></i><i></i></span><b id="doneNumber" class="num"></b></div>
+      <div class="row"><a class="btn" id="callNow" href="#">Call it now</a><button class="btn ghost" id="copyNum" type="button">Copy number</button><span class="hint" id="copyNote" role="status"></span></div>
+    </div>
     <p class="muted" id="doneText">This usually takes under a minute. You can keep this page open or check your email.</p>
-    <b class="num" id="doneNumber" hidden style="font-size:40px;font-weight:900;font-variation-settings:'wdth' 120;user-select:all;color:var(--cool)"></b>
   </div>
     </div>
   </div>
@@ -785,7 +823,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
   const SCENES = {
     book: { lines: [
       ['caller', 'My AC is making a grinding noise and barely cooling.'],
-      ['ai', "I can get someone out. What's your name and the best number to reach you?"],
+      ['ai', "Sorry about that. Let's get a technician out. Can I get your name and the best number to reach you?"],
       ['caller', 'Mike, 513-555-0177.'],
       ['ai', "That's 5-1-3, 5-5-5, 0-1-7-7. And the address?"],
       ['ai', 'I have Thursday 10 to 12 or Thursday 1 to 3. Which works better?'],
@@ -804,8 +842,8 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     price: { lines: [
       ['caller', 'How much is a new furnace?'],
       ['ai', "That depends on your home and the system, so I can't give an exact price over the phone."],
-      ['ai', 'Our technicians do free estimates. Would you like me to book one?'],
-    ], tag: 'Routine', out: 'Quotes only the fees the shop has set. Offers an estimate visit instead.' },
+      ['ai', 'A technician can look and give you a price. Would you like me to book a visit?'],
+    ], tag: 'Routine', out: 'Quotes only the fees the shop has set. Offers a visit instead of guessing.' },
   };
   const panel = document.getElementById('scenePanel');
   function showScene(key) {
@@ -888,20 +926,51 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     if (first) first.focus();
   }
 
+  const stepsEl = document.getElementById('launchSteps');
+  const setStep = (k, state) => { const li = stepsEl.querySelector(`[data-k="${k}"]`); li.className = state; };
+
+  // Lights up each step as the server finishes it, then reveals the number.
   function render(c) {
-    const title = document.getElementById('doneTitle'), text = document.getElementById('doneText'), num = document.getElementById('doneNumber');
+    const title = document.getElementById('doneTitle'), text = document.getElementById('doneText');
+    const kicker = document.getElementById('doneKicker');
+    const st = c.steps || {};
+    setStep('details', 'done');
     if (c.status === 'active') {
-      title.textContent = `${c.business} is live.`;
+      ['script', 'number', 'live'].forEach((k) => setStep(k, 'done'));
+      stepsEl.querySelector('[data-k="live"] span:not(.dot)').textContent = 'Ready to take calls';
+      kicker.textContent = 'Your receptionist is live';
+      title.textContent = `${c.business} now answers every call.`;
       if (c.phoneNumber) {
-        num.textContent = pretty(c.phoneNumber); num.hidden = false;
-        text.textContent = 'Call this number to hear your receptionist. Then set your business line to forward missed calls to it. Full steps are in your email.';
+        document.getElementById('doneNumber').textContent = pretty(c.phoneNumber);
+        document.getElementById('callNow').href = `tel:${c.phoneNumber}`;
+        document.getElementById('reveal').hidden = false;
+        text.textContent = 'Call it now to hear it. New numbers can take a few minutes to start ringing. Then forward your missed calls to it; the steps are in your email.';
       } else {
-        text.textContent = 'Your number is being activated. We will email it to you shortly.';
+        text.textContent = 'Your number is being activated. We will email it to you in a few minutes.';
       }
       return true;
     }
-    if (c.status === 'pending_approval') { title.textContent = 'Thanks, we got your details.'; text.textContent = 'We review every new shop. You will get an email with your number within one business day.'; return true; }
-    if (c.status === 'failed') { title.textContent = 'We hit a snag setting this up.'; text.textContent = 'Our team has been notified and will email you within one business day.'; return true; }
+    if (c.status === 'pending_approval') {
+      setStep('script', 'wait');
+      document.getElementById('scriptNote').textContent = 'Waiting for a quick review by our team';
+      kicker.textContent = 'Details received';
+      title.textContent = 'Thanks, we got your details.';
+      text.textContent = 'We review every new shop. You will get an email with your number within one business day.';
+      return true;
+    }
+    if (c.status === 'failed') {
+      const k = !st.script ? 'script' : 'number';
+      if (st.script) setStep('script', 'done');
+      setStep(k, 'fail');
+      kicker.textContent = 'Setup paused';
+      title.textContent = 'We hit a snag setting this up.';
+      text.textContent = 'Our team has been notified and will email you within one business day. You do not need to sign up again.';
+      return true;
+    }
+    // Still setting up.
+    setStep('script', st.script ? 'done' : 'work');
+    setStep('number', st.number ? 'done' : (st.script ? 'work' : ''));
+    setStep('live', st.number ? 'work' : '');
     return false;
   }
 
@@ -911,9 +980,15 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
       const data = await r.json();
       if (data.ok && render(data.client)) return;
     } catch {}
-    if (tries < 40) setTimeout(() => poll(id, tries + 1), 3000);
+    if (tries < 60) setTimeout(() => poll(id, tries + 1), 2000);
     else document.getElementById('doneText').textContent = 'Still working on it. We will email you as soon as it is ready.';
   }
+
+  document.getElementById('copyNum').addEventListener('click', async () => {
+    const n = document.getElementById('doneNumber'), note = document.getElementById('copyNote');
+    try { await navigator.clipboard.writeText(n.textContent); note.textContent = 'Copied.'; }
+    catch { const r = document.createRange(); r.selectNodeContents(n); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); note.textContent = 'Selected. Press Ctrl+C or Cmd+C to copy.'; }
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -926,7 +1001,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
       if (!r.ok || !data.ok) { showErrors(data.errors || { form: 'Something went wrong. Try again.' }); return; }
       form.hidden = true; done.hidden = false;
       done.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      if (data.client && !render(data.client)) poll(data.client.id);
+      if (data.client && !render(data.client)) setTimeout(() => poll(data.client.id), 1200);
     } catch {
       showErrors({ form: 'Could not reach the server. Check your connection and try again.' });
     } finally {

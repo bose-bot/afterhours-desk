@@ -6,49 +6,50 @@
 <meta name="robots" content="noindex">
 <title>Admin — AfterHours Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap">
 <style>
 :root{
-  --bg:#F3F6F7;--surface:#FFFFFF;--surface-2:#E7EDF0;--fg:#0E1A22;--muted:#4D5D67;--line:#D2DBE0;
-  --heat:#EC7A2E;--on-heat:#1A0E05;--cool:#1E6AAB;--cool-bg:#E1EEF8;
-  --crit:#B42318;--crit-bg:#FDE7E4;--warn:#8A5A00;--warn-bg:#FFF1CC;--ok:#1C6E45;--ok-bg:#DCF2E5;
-  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;--body:'Public Sans','Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
-  color-scheme:light;
+  /* Same night-shift palette as the public site. */
+  --bg:#0D1621;--surface:#132131;--surface-2:#192B3E;--fg:#E9EFF3;--muted:#9AABB9;--line:#263B51;
+  --heat:#FF8A3D;--on-heat:#1C0D02;--cool:#5CC8FF;--cool-bg:rgba(92,200,255,.14);
+  --crit:#FF9488;--crit-bg:rgba(255,148,136,.15);--warn:#FFB36B;--warn-bg:rgba(255,138,61,.16);--ok:#74E0A9;--ok-bg:rgba(116,224,169,.14);
+  --display:'Archivo','Segoe UI',system-ui,sans-serif;--body:'Archivo','Segoe UI',system-ui,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0C1419;--surface:#142028;--surface-2:#1B2A35;--fg:#E7EDF0;--muted:#9CACB6;--line:#2A3B47;
-  --heat:#F28A3C;--cool:#67B1EA;--cool-bg:#132D42;
-  --crit:#FF9A90;--crit-bg:#3B1714;--warn:#F2C14E;--warn-bg:#36290A;--ok:#72D5A2;--ok-bg:#11301E;color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15.5px;line-height:1.55}
-h1,h2,h3{font-family:var(--display);letter-spacing:-.02em;line-height:1.1;margin:0}
-h1{font-size:28px}h2{font-size:20px}h3{font-size:17px}
+body{margin:0;background:radial-gradient(80% 50% at 85% -10%,rgba(92,200,255,.10),transparent 60%),radial-gradient(60% 40% at 0% 0%,rgba(255,138,61,.07),transparent 60%),var(--bg);background-attachment:fixed;color:var(--fg);font-family:var(--body);font-size:15.5px;line-height:1.55;min-height:100vh}
+h1,h2,h3{font-family:var(--display);font-weight:800;letter-spacing:-.02em;line-height:1.1;margin:0;font-variation-settings:'wdth' 115}
+h1{font-size:clamp(28px,4vw,40px);font-variation-settings:'wdth' 122}h2{font-size:21px}h3{font-size:17px}
+.brand-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--heat);margin-right:10px;vertical-align:.2em;box-shadow:0 0 0 6px rgba(255,138,61,.15)}
 p{margin:0}
 .wrap{max-width:1120px;margin:0 auto;padding-block:28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
 .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .spread{justify-content:space-between}
 .muted{color:var(--muted)}.hint{font-size:13.5px;color:var(--muted)}
 .mono{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}
-.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:9px 16px;min-height:40px;border-radius:9px;background:var(--heat);color:var(--on-heat)}
-.btn.ghost{background:transparent;color:var(--fg);border:1.5px solid var(--line)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:9px 18px;min-height:42px;border-radius:999px;background:var(--heat);color:var(--on-heat)}
+.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.ghost:hover{box-shadow:inset 0 0 0 1.5px var(--muted)}
 .btn[disabled]{opacity:.55;cursor:default}
 :focus-visible{outline:3px solid var(--cool);outline-offset:2px;border-radius:6px}
-input{font:inherit;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:9px;padding:9px 12px;min-height:42px;width:100%}
+input{font:inherit;color:var(--fg);background:var(--bg);border:1.5px solid var(--line);border-radius:9px;padding:9px 12px;min-height:42px;width:100%}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
-.stat b{display:block;font-family:var(--display);font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.stat b{display:block;font-family:var(--display);font-size:40px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;font-variation-settings:'wdth' 120}
+.stat.hot{border-color:var(--heat);background:linear-gradient(180deg,rgba(255,138,61,.10),var(--surface))}
+.stat.hot b{color:var(--heat)}
 .pill{display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap}
 .s-active{background:var(--ok-bg);color:var(--ok)}
 .s-pending_approval{background:var(--warn-bg);color:var(--warn)}
 .s-provisioning{background:var(--cool-bg);color:var(--cool)}
 .s-failed{background:var(--crit-bg);color:var(--crit)}
 .u-Emergency{background:var(--crit-bg);color:var(--crit)}.u-Priority{background:var(--warn-bg);color:var(--warn)}.u-Routine{background:var(--ok-bg);color:var(--ok)}
-.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px}
 table{border-collapse:collapse;width:100%;min-width:720px}
 th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+th{font-size:13px;font-weight:600;color:var(--muted)}
 tr:last-child td{border-bottom:0}
 tr.sel td{background:var(--surface-2)}
 .empty{padding:24px;text-align:center;color:var(--muted)}
@@ -57,13 +58,13 @@ tr.sel td{background:var(--surface-2)}
 dl{margin:0;display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 14px}
 dt{color:var(--muted)}dd{margin:0;min-width:0;overflow-wrap:anywhere}
 details summary{cursor:pointer;color:var(--cool);font-weight:600}
-pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:12.5px;background:var(--surface-2);padding:10px;border-radius:8px;margin:6px 0 0;max-height:280px;overflow:auto}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-size:13.5px;line-height:1.55;background:var(--bg);padding:10px;border-radius:8px;margin:6px 0 0;max-height:280px;overflow:auto}
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="row spread">
-    <div><h1>AfterHours Desk admin</h1><p class="hint">Approve shops, check setups, and see bookings and calls.</p></div>
+    <div><h1><span class="brand-dot" aria-hidden="true"></span>AfterHours Desk</h1><p class="hint" style="margin-top:6px">Approve shops, check setups, and see every booking and call.</p></div>
     <div class="row"><button class="btn ghost" id="refresh" type="button" hidden>Refresh</button><button class="btn ghost" id="logout" type="button" hidden>Sign out</button></div>
   </div>
 
@@ -78,8 +79,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-siz
 
   <section id="app" hidden style="flex-direction:column;gap:22px">
     <p class="note err" id="appErr" hidden></p>
+    <p class="note" id="appOk" role="status" hidden style="color:var(--ok);background:var(--ok-bg)"></p>
     <div class="stats">
-      <div class="stat"><span class="muted">Waiting for approval</span><b id="nPending">0</b></div>
+      <div class="stat hot" id="statPending"><span class="muted">Waiting for approval</span><b id="nPending">0</b></div>
       <div class="stat"><span class="muted">Live</span><b id="nActive">0</b></div>
       <div class="stat"><span class="muted">Failed setups</span><b id="nFailed">0</b></div>
       <div class="stat"><span class="muted">All shops</span><b id="nAll">0</b></div>
@@ -146,6 +148,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-siz
   function render(clients) {
     const count = (s) => clients.filter((c) => c.status === s).length;
     $('#nPending').textContent = count('pending_approval');
+    $('#statPending').classList.toggle('hot', count('pending_approval') > 0);
     $('#nActive').textContent = count('active');
     $('#nFailed').textContent = count('failed');
     $('#nAll').textContent = clients.length;
@@ -156,6 +159,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-siz
       if (c.status === 'pending_approval') actions.append(el('button', { class: 'btn', type: 'button', text: 'Approve', onclick: (ev) => act(ev, c, 'approve') }));
       if (c.status === 'failed') actions.append(el('button', { class: 'btn', type: 'button', text: 'Retry setup', onclick: (ev) => act(ev, c, 'retry') }));
       if (c.status === 'active' && !c.phoneNumber) actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Get number', onclick: (ev) => act(ev, c, 'refresh-number') }));
+      if (c.status === 'active' && c.vapiAssistantId) actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Update script', title: 'Send the latest receptionist script to this shop', onclick: (ev) => act(ev, c, 'update-script', 'Script updated') }));
       actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Details', onclick: () => openDetail(c.id) }));
       tb.append(el('tr', { class: c.id === selected ? 'sel' : '' },
         el('td', {}, el('b', { text: c.business }), el('div', { class: 'hint', text: c.details?.area || '' })),
@@ -167,10 +171,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-siz
     }
   }
 
-  async function act(ev, c, action) {
+  async function act(ev, c, action, doneMsg) {
     const b = ev.currentTarget; b.disabled = true; b.textContent = 'Working…';
-    try { await api('POST', `/api/admin/clients/${encodeURIComponent(c.id)}/${action}`); }
-    catch (e) { $('#appErr').textContent = e.message; $('#appErr').hidden = false; }
+    $('#appOk').hidden = true;
+    try {
+      await api('POST', `/api/admin/clients/${encodeURIComponent(c.id)}/${action}`);
+      if (doneMsg) { $('#appOk').textContent = `${doneMsg} for ${c.business}.`; $('#appOk').hidden = false; }
+    } catch (e) { $('#appErr').textContent = e.message; $('#appErr').hidden = false; }
     await load();
   }
 

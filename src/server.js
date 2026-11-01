@@ -2,7 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateSignup } from './validate.js';
-import { provisionClient, refreshNumber } from './provision.js';
+import { provisionClient, refreshNumber, updateScript } from './provision.js';
 import { createWebhookHandler, isAuthorized } from './webhook.js';
 import { timingSafeEqual } from 'node:crypto';
 
@@ -24,8 +24,12 @@ function rateLimiter(perHour) {
 // Express 4 doesn't catch errors from async handlers; this passes them to the error handler.
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
+// What the sign-up page may show: progress only, never contact details or internal ids.
 function publicView(c) {
-  return { id: c.id, business: c.business, status: c.status, phoneNumber: c.phoneNumber };
+  return {
+    id: c.id, business: c.business, status: c.status, phoneNumber: c.phoneNumber,
+    steps: { script: Boolean(c.vapiAssistantId), number: Boolean(c.vapiPhoneId) },
+  };
 }
 
 /**
@@ -119,6 +123,14 @@ export function createApp(deps) {
   });
   admin.post('/clients/:id/approve', startSetup(['pending_approval']));
   admin.post('/clients/:id/retry', startSetup(['failed']));
+  admin.post('/clients/:id/update-script', async (req, res) => {
+    try {
+      const { client, updated } = await updateScript(req.params.id, deps);
+      if (!client) return res.status(404).json({ error: 'not found' });
+      if (!updated) return res.status(409).json({ error: 'This shop has no receptionist yet. Approve or retry its setup first.' });
+      res.json({ ok: true });
+    } catch (e) { res.status(502).json({ error: e.message }); }
+  });
   admin.post('/clients/:id/refresh-number', async (req, res) => {
     try { res.json({ client: await refreshNumber(req.params.id, deps) }); }
     catch (e) { res.status(502).json({ error: e.message }); }

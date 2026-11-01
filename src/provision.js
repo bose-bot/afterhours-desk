@@ -1,5 +1,6 @@
 // Turns a sign-up into a live receptionist: Vapi assistant -> phone number -> welcome email.
 import { buildSystemPrompt, firstMessage, toolDefinitions } from './prompt.js';
+import { welcomeEmail } from './emails.js';
 
 export function webhookUrl(config, clientId) {
   const q = new URLSearchParams({ client: clientId, token: config.webhookSecret });
@@ -30,28 +31,6 @@ export function assistantBody(config, client) {
 function pretty(e164) {
   const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164 || '');
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
-}
-
-function welcomeEmail(config, client) {
-  const n = client.phoneNumber ? pretty(client.phoneNumber) : null;
-  return {
-    to: client.email,
-    subject: `Your ${config.brandName} receptionist is live`,
-    text: `Hi ${client.contact},
-
-Your AI receptionist for ${client.business} is set up.
-
-${n ? `Its phone number is ${n}.` : 'Its phone number is being activated and will be emailed to you shortly.'}
-
-What to do next:
-1. Call ${n || 'the number'} yourself and pretend to be a customer. Try booking a visit, and try "I smell gas" to hear the safety response.
-2. Set your business line to forward calls to it when you're busy or closed. Most carriers call this "conditional call forwarding" (forward on busy / no answer). Your carrier's support page or app will show how.
-3. Reply to this email with anything it should say differently.
-
-New bookings and messages will be sent to this address.
-
-${config.brandName}`,
-  };
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -164,4 +143,14 @@ export async function refreshNumber(clientId, { db, vapi }) {
   if (!client?.vapiPhoneId) return client;
   const p = await vapi.getPhoneNumber(client.vapiPhoneId);
   return p?.number ? await db.updateClient(clientId, { phoneNumber: p.number }) : client;
+}
+
+// Pushes the current script (instructions, greeting, tools) to a live client's assistant,
+// so wording changes reach shops that were set up earlier.
+export async function updateScript(clientId, { db, vapi, config }) {
+  const client = await db.getClient(clientId);
+  if (!client?.vapiAssistantId) return { client, updated: false };
+  const { name, firstMessage, model, server, serverMessages, voice } = assistantBody(config, client);
+  await vapi.updateAssistant(client.vapiAssistantId, { name, firstMessage, model, server, serverMessages, ...(voice ? { voice } : {}) });
+  return { client, updated: true };
 }

@@ -15,6 +15,7 @@ export function fakeVapi({ failPhone = false, numberLater = false, availableArea
     failPhone,
     async createAssistant(body) { calls.push(['createAssistant', body]); return { id: `asst_${++n}` }; },
     async deleteAssistant(id) { calls.push(['deleteAssistant', id]); return {}; },
+    async updateAssistant(id, body) { calls.push(['updateAssistant', id, body]); return { id }; },
     async createPhoneNumber(body) {
       calls.push(['createPhoneNumber', body]);
       if (this.failPhone) { const e = new Error('Vapi POST /phone-number failed (400): no numbers available'); throw e; }
