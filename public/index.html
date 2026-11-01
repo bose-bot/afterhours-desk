@@ -2,200 +2,414 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>AfterHours Desk — AI receptionist for HVAC companies</title>
-<meta name="description" content="An AI receptionist for heating and cooling companies. Answers after-hours and overflow calls, books service visits into your calendar, and texts you a summary of every call.">
+<meta name="description" content="An AI receptionist for heating and cooling companies. It answers after-hours and overflow calls, books service visits, handles emergencies safely, and emails you a summary of every call.">
 <meta property="og:title" content="AfterHours Desk — AI receptionist for HVAC companies">
 <meta property="og:description" content="Every call answered. Every job booked. Even at 2 a.m.">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23EC7A2E' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#0D1621">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FF8A3D' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap">
 <style>
+/* Night-shift control panel: the product works while the shop is closed.
+   Two signal colors from the trade itself: furnace flame and cold air. One family, width as the contrast. */
 :root{
-  --bg:#F3F6F7;--surface:#FFFFFF;--surface-2:#E7EDF0;--fg:#0E1A22;--muted:#4D5D67;--line:#D2DBE0;
-  --heat:#EC7A2E;--heat-ink:#9A3A0B;--on-heat:#1A0E05;--cool:#1E6AAB;--cool-bg:#E1EEF8;
-  --crit:#B42318;--crit-bg:#FDE7E4;--warn:#8A5A00;--warn-bg:#FFF1CC;--ok:#1C6E45;--ok-bg:#DCF2E5;
-  --display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;--body:'Public Sans','Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
-  color-scheme:light;
+  --night:#0D1621; --panel:#132131; --panel-2:#192B3E; --line:#263B51;
+  --ink:#E9EFF3; --dim:#9AABB9; --faint:#6E8295;
+  --heat:#FF8A3D; --heat-ink:#1C0D02; --cool:#5CC8FF;
+  --crit:#FF9488; --ok:#74E0A9;
+  --font:'Archivo','Segoe UI',system-ui,sans-serif;
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  color-scheme:dark;
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#0C1419;--surface:#142028;--surface-2:#1B2A35;--fg:#E7EDF0;--muted:#9CACB6;--line:#2A3B47;
-  --heat:#F28A3C;--heat-ink:#F7A86A;--cool:#67B1EA;--cool-bg:#132D42;
-  --crit:#FF9A90;--crit-bg:#3B1714;--warn:#F2C14E;--warn-bg:#36290A;--ok:#72D5A2;--ok-bg:#11301E;color-scheme:dark}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-html{scroll-behavior:smooth;scroll-padding-top:80px}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16.5px;line-height:1.6}
-h1,h2,h3{font-family:var(--display);line-height:1.08;letter-spacing:-.02em;text-wrap:balance;margin:0}
-h1{font-size:clamp(38px,6vw,66px);font-weight:800;letter-spacing:-.035em}
-h2{font-size:clamp(28px,3.8vw,40px);font-weight:800}
-h3{font-size:20px;font-weight:600;letter-spacing:-.01em}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--night);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.6;font-variation-settings:'wdth' 100;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--night)}
+h1,h2,h3{margin:0;text-wrap:balance;font-weight:800;line-height:1.02}
+h1{font-size:clamp(42px,6.4vw,84px);font-variation-settings:'wdth' 125;letter-spacing:-.025em}
+h2{font-size:clamp(30px,4vw,52px);font-variation-settings:'wdth' 118;letter-spacing:-.02em}
+h3{font-size:20px;font-variation-settings:'wdth' 110;letter-spacing:-.01em;line-height:1.2}
 p{margin:0}
 a{color:var(--cool)}
-img{max-width:100%}
-.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.band{padding-block:72px}.band.alt{background:var(--surface-2)}
-.stack{display:flex;flex-direction:column;gap:16px}
-.lede{font-size:19px;color:var(--muted);max-width:60ch}
-.eyebrow{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--heat-ink)}
-.muted{color:var(--muted)}.hint{font-size:13.5px;color:var(--muted)}
-.mono{font-family:var(--mono);font-size:13.5px;font-variant-numeric:tabular-nums}
-:focus-visible{outline:3px solid var(--cool);outline-offset:2px;border-radius:6px}
-header.top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
-header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px;padding-block:12px}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:20px;color:var(--fg);text-decoration:none}
-nav.main{display:flex;flex-wrap:wrap;gap:4px}
-nav.main a{text-decoration:none;color:var(--fg);font-weight:500;font-size:15px;padding:9px 12px;border-radius:8px;min-height:40px;display:inline-flex;align-items:center}
-nav.main a:hover{background:var(--surface-2)}
-nav.main a.cta{background:var(--heat);color:var(--on-heat);font-weight:700}
-.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;min-height:46px;border-radius:10px;background:var(--heat);color:var(--on-heat)}
-.btn:hover{filter:brightness(1.05)}
-.btn.ghost{background:transparent;color:var(--fg);border:1.5px solid var(--line)}
+:focus-visible{outline:3px solid var(--cool);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1200px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.band{padding-block:clamp(72px,9vw,120px)}
+.lede{font-size:20px;color:var(--dim);max-width:56ch}
+.muted{color:var(--dim)}
+.hint{font-size:14px;color:var(--faint)}
+.num-t{font-variant-numeric:tabular-nums}
+.section-head{display:flex;flex-direction:column;gap:16px;max-width:760px;margin-bottom:48px}
+
+/* ---- header ---- */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--night) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 20px;padding-block:14px}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:800;font-size:19px;font-variation-settings:'wdth' 120}
+nav.main{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+nav.main a{color:var(--ink);text-decoration:none;font-size:15px;font-weight:500;padding:9px 13px;border-radius:999px;min-height:42px;display:inline-flex;align-items:center}
+nav.main a:hover{background:var(--panel-2)}
+
+/* ---- buttons ---- */
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;font-variation-settings:'wdth' 108;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:15px 26px;min-height:52px;border-radius:999px;background:var(--heat);color:var(--heat-ink);transition:transform .15s ease,box-shadow .15s ease}
+.btn:hover{transform:translateY(-1px);box-shadow:0 10px 30px -10px color-mix(in srgb,var(--heat) 70%,transparent)}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.ghost:hover{box-shadow:inset 0 0 0 1.5px var(--dim)}
+.btn[disabled]{opacity:.6;cursor:default;transform:none}
+nav.main a.btn{padding:9px 18px;min-height:42px;color:var(--heat-ink)}
+nav.main a.btn:hover{background:var(--heat)}
 .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:8px}
-.step-n{font-family:var(--display);font-weight:800;font-size:44px;line-height:1;color:var(--heat)}
-.hero{display:flex;flex-wrap:wrap;gap:48px;align-items:center}
-.hero>.copy{flex:999 1 500px;min-width:0;display:flex;flex-direction:column;gap:22px}
-.hero>.aside{flex:1 1 320px;min-width:0}
-.sum{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:10px}
-.sum-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}
-.sum dl{margin:0;display:grid;grid-template-columns:96px minmax(0,1fr);gap:6px 12px;font-size:15px}
-.sum dt{color:var(--muted)}.sum dd{margin:0;min-width:0;overflow-wrap:anywhere}
-.pill{display:inline-flex;align-items:center;font-size:13px;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
-.pill.Emergency{background:var(--crit-bg);color:var(--crit)}.pill.Priority{background:var(--warn-bg);color:var(--warn)}.pill.Routine{background:var(--ok-bg);color:var(--ok)}
-.demo{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
-.call{flex:999 1 480px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
-.call-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
-.msgs{padding:18px;display:flex;flex-direction:column;gap:10px}
-.msg{max-width:85%;padding:10px 14px;border-radius:14px}
-.msg.ai{background:var(--surface-2);align-self:flex-start;border-bottom-left-radius:4px}
-.msg.me{background:var(--cool);color:#FFFFFF;align-self:flex-end;border-bottom-right-radius:4px}
-@media (prefers-color-scheme:dark){.msg.me{color:#06131E}}
-.side{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:14px}
-.callbox{background:var(--surface);border:2px solid var(--heat);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:6px}
-.callbox b.num{font-family:var(--display);font-size:28px;font-weight:800;user-select:all}
-.price{font-family:var(--display);font-weight:800;font-size:40px;line-height:1}
-.price small{font-family:var(--body);font-size:16px;font-weight:500;color:var(--muted)}
-.card ul{margin:0;padding-left:20px;color:var(--muted)}
-form.fs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px 20px}
-.field{display:flex;flex-direction:column;gap:6px;min-width:0}.field.full{grid-column:1/-1}
-label{font-weight:600;font-size:14.5px}
-input,select,textarea{font:inherit;color:var(--fg);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;min-height:46px;width:100%}
+
+/* ---- hero ---- */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(32px,5vw,72px);align-items:center;padding-block:clamp(48px,7vw,96px) clamp(64px,8vw,104px)}
+.hero-copy{display:flex;flex-direction:column;gap:28px;min-width:0}
+.status{display:inline-flex;align-items:center;gap:10px;font-size:15px;color:var(--dim)}
+.status i{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 60%,transparent);animation:ping 2.4s infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 55%,transparent)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* live call device */
+.device{position:relative;background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;box-shadow:0 40px 80px -40px #000}
+.device-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.caller{display:flex;align-items:center;gap:12px;min-width:0}
+.avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--heat) 18%,transparent);color:var(--heat);flex:none}
+.caller b{display:block;font-variation-settings:'wdth' 110}
+.timer{font-variant-numeric:tabular-nums;color:var(--dim);font-size:15px}
+canvas.wave{width:100%;height:64px;display:block}
+.transcript{display:flex;flex-direction:column;gap:9px;height:252px;overflow:hidden;mask-image:linear-gradient(to bottom,transparent,#000 18%);-webkit-mask-image:linear-gradient(to bottom,transparent,#000 18%);justify-content:flex-end}
+.line{display:flex;gap:10px;font-size:15.5px;line-height:1.45;align-items:baseline}
+.line .who{flex:none;width:58px;font-size:13px;font-weight:700;font-variation-settings:'wdth' 112}
+.line.ai .who{color:var(--cool)}
+.line.caller .who{color:var(--heat)}
+.line .say{color:var(--ink);min-width:0}
+.line.tool .say{color:var(--dim);font-size:14px}
+.cursor{display:inline-block;width:2px;height:1em;background:var(--cool);vertical-align:-2px;margin-left:2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* schedule strip that receives the booking */
+.week{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.day{background:var(--night);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px;min-height:74px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.day span{font-size:12.5px;color:var(--faint);font-variation-settings:'wdth' 108}
+.slot{font-size:12px;line-height:1.3;border-radius:7px;padding:5px 6px;background:var(--panel-2);color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.new{background:var(--cool);color:#06202E;font-weight:700;transform-origin:top;animation:drop .5s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes drop{from{transform:translateY(-18px) scale(.9);opacity:0}to{transform:none;opacity:1}}
+.device-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.replay{appearance:none;background:none;border:0;color:var(--cool);font:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;min-height:40px}
+
+/* ---- night timeline ---- */
+.night{background:linear-gradient(180deg,var(--night),#0A121B)}
+.timeline{position:relative;margin-top:8px}
+.tl-bar{position:relative;height:190px;border-radius:var(--r-md);background:linear-gradient(90deg,color-mix(in srgb,var(--cool) 7%,var(--panel)),var(--panel) 45%,color-mix(in srgb,var(--cool) 10%,var(--panel)));border:1px solid var(--line)}
+.tl-bar::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:1px dashed var(--line)}
+.tl-call{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:var(--heat);box-shadow:0 0 0 5px color-mix(in srgb,var(--heat) 22%,transparent);outline-offset:6px}
+/* Labels sit on the bar, alternating above and below the line so neighbours don't collide. */
+.tip{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);font-size:13.5px;padding:7px 11px;border-radius:9px;pointer-events:none}
+.tl-call:nth-of-type(odd) .tip{bottom:24px}
+.tl-call:nth-of-type(even) .tip{top:24px}
+.tip b{color:var(--heat);font-variant-numeric:tabular-nums;margin-right:6px}
+.tl-call:first-of-type .tip{left:0;transform:translateX(-10px)}
+.tl-call:last-of-type .tip{left:auto;right:0;transform:translateX(10px)}
+@media (max-width:860px){
+  .tl-bar{height:110px}
+  .tip{opacity:0;transition:.15s;white-space:normal;width:max-content;max-width:180px}
+  .tl-call:hover .tip,.tl-call:focus .tip{opacity:1;z-index:2}
+}
+.tl-axis{display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:var(--faint);font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:20px;margin-top:22px;font-size:15px;color:var(--dim)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:8px;vertical-align:0}
+
+/* ---- steps ---- */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(20px,3vw,40px);counter-reset:s}
+.step{display:flex;flex-direction:column;gap:12px;padding-top:24px;border-top:2px solid var(--line)}
+.step::before{counter-increment:s;content:counter(s);font-weight:800;font-size:56px;line-height:1;font-variation-settings:'wdth' 125;color:var(--heat)}
+
+/* ---- scenarios ---- */
+.scenes{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(24px,4vw,56px);align-items:start}
+.tabs{display:flex;flex-direction:column;gap:8px}
+.tab{appearance:none;text-align:left;font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:var(--r-md);padding:18px 20px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:44px}
+.tab b{font-size:18px;font-variation-settings:'wdth' 112}
+.tab span{color:var(--dim);font-size:15px}
+.tab[aria-selected="true"]{background:var(--panel);border-color:var(--cool)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:24px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.outcome{margin-top:6px;padding:14px 16px;border-radius:var(--r-sm);background:var(--night);border:1px solid var(--line);font-size:15px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.tag{font-size:13px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.tag.Emergency{background:color-mix(in srgb,var(--crit) 18%,transparent);color:var(--crit)}
+.tag.Priority{background:color-mix(in srgb,var(--heat) 18%,transparent);color:var(--heat)}
+.tag.Routine{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+
+/* ---- calculator ---- */
+.calc{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(24px,4vw,56px);align-items:center}
+.sliders{display:flex;flex-direction:column;gap:28px}
+.slider label{display:flex;justify-content:space-between;gap:12px;font-weight:600;margin-bottom:10px}
+.slider output{font-variant-numeric:tabular-nums;color:var(--heat);font-weight:800;font-variation-settings:'wdth' 115}
+input[type=range]{width:100%;accent-color:var(--heat);height:28px}
+.result{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:clamp(24px,3vw,40px);display:flex;flex-direction:column;gap:12px}
+.big{font-size:clamp(52px,7vw,92px);font-weight:900;line-height:1;font-variation-settings:'wdth' 125;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+
+/* ---- pricing ---- */
+.plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;max-width:960px}
+.plan{border:1px solid var(--line);border-radius:var(--r-lg);padding:30px;display:flex;flex-direction:column;gap:16px;background:var(--panel)}
+.plan.lead{border-color:var(--heat);background:linear-gradient(180deg,color-mix(in srgb,var(--heat) 9%,var(--panel)),var(--panel))}
+.price{font-size:56px;font-weight:900;line-height:1;font-variation-settings:'wdth' 120;letter-spacing:-.02em}
+.price small{font-size:17px;font-weight:500;color:var(--dim);letter-spacing:0;font-variation-settings:'wdth' 100}
+.plan ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.plan li{display:flex;gap:10px;color:var(--dim)}
+.plan li::before{content:"";flex:none;width:7px;height:7px;margin-top:10px;border-radius:50%;background:var(--heat)}
+.plan .btn{margin-top:auto}
+
+/* ---- trust ---- */
+.rules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.rule{background:var(--night);padding:28px;display:flex;flex-direction:column;gap:10px}
+
+/* ---- faq ---- */
+.faq{max-width:820px;display:flex;flex-direction:column;border-top:1px solid var(--line)}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{cursor:pointer;list-style:none;padding:22px 40px 22px 0;font-weight:700;font-size:19px;font-variation-settings:'wdth' 110;position:relative}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";position:absolute;right:6px;top:50%;width:12px;height:12px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(225deg)}
+.faq details p{padding:0 0 22px;color:var(--dim);max-width:64ch}
+
+/* ---- sign-up form (ids and names are used by the script below) ---- */
+.signup{background:linear-gradient(180deg,#0A121B,var(--night))}
+.signup-grid{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);gap:clamp(24px,4vw,64px);align-items:start}
+.form-shell{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:clamp(20px,3vw,36px)}
+form.fs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field.full{grid-column:1/-1}
+label{font-weight:600;font-size:15px}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--night);border:1.5px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;min-height:50px;width:100%}
+input[type=range]{background:none;border:0;padding:0;min-height:0}
+textarea{resize:vertical}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cool)}
+input[aria-invalid="true"]{border-color:var(--crit)}
 .hp{position:absolute;left:-9999px}
-footer.foot{border-top:1px solid var(--line);background:var(--surface)}
-footer.foot .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-between;padding-block:24px;font-size:14px;color:var(--muted)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:32px;display:flex;flex-direction:column}
+.eyebrow{color:var(--ok);font-weight:700}
+.num{font-variant-numeric:tabular-nums}
+#signupDone h3{font-size:28px}
+#formError{color:var(--crit)!important}
+.field-error{color:var(--crit)!important}
+.side-list{display:flex;flex-direction:column;gap:18px;margin-top:28px}
+.side-list div{display:flex;gap:14px;align-items:baseline}
+.side-list b{color:var(--heat);font-variation-settings:'wdth' 120;font-size:22px;min-width:26px}
+
+footer.foot{border-top:1px solid var(--line)}
+footer.foot .wrap{display:flex;flex-wrap:wrap;gap:10px 28px;justify-content:space-between;padding-block:28px;font-size:14px;color:var(--faint)}
+footer.foot a{color:var(--dim)}
+
+/* ---- responsive ---- */
+@media (max-width:960px){
+  .hero,.scenes,.calc,.signup-grid{grid-template-columns:minmax(0,1fr)}
+  .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:680px){
+  body{font-size:16px}
+  .steps,.plans,.rules{grid-template-columns:minmax(0,1fr)}
+  form.fs{grid-template-columns:minmax(0,1fr)}
+  nav.main a:not(.btn){display:none}
+  .week{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .week .day:nth-child(n+4){display:none}
+  .transcript{height:270px}
+  .tl-axis span:nth-child(even){visibility:hidden}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
 </style>
 </head>
 <body>
 <header class="top"><div class="wrap">
-  <a class="brand" href="#top"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--heat)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>AfterHours Desk</a>
+  <a class="brand" href="#top" aria-label="AfterHours Desk home">
+    <svg aria-hidden="true" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--heat)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>
+    AfterHours Desk
+  </a>
   <nav class="main" aria-label="Main">
-    <a href="#demo">Demo</a><a href="#pricing">Pricing</a><a href="#about">About</a><a href="#signup" class="cta">Get started</a>
+    <a href="#how">How it works</a><a href="#calls">Hear it</a><a href="#cost">Missed-call cost</a><a href="#pricing">Pricing</a>
+    <a href="#signup" class="btn">Get started</a>
   </nav>
 </div></header>
 
 <main id="top">
-<section class="band"><div class="wrap hero">
-  <div class="copy">
-    <p class="eyebrow">AI receptionist for heating &amp; cooling companies</p>
+<!-- HERO: a live call plays out, ending with a booking on the schedule -->
+<section class="wrap hero">
+  <div class="hero-copy">
+    <span class="status"><i aria-hidden="true"></i>AI receptionist for heating and cooling companies</span>
     <h1>Every call answered. Every job booked. Even at 2&nbsp;a.m.</h1>
-    <p class="lede">AfterHours Desk picks up when your team can't. It books service visits into your calendar, sends emergencies to the right place, and texts you a summary of every call.</p>
-    <div class="row"><a class="btn" href="#demo">Hear it handle a call</a><a class="btn ghost" href="#signup">Set it up for my shop</a></div>
+    <p class="lede">When your techs are on a roof or the office is closed, AfterHours Desk picks up, books the visit into an open slot, sends emergencies the right way, and texts you what happened.</p>
+    <div class="row">
+      <a class="btn" href="#signup">Create my receptionist</a>
+      <a class="btn ghost" href="#calls">Hear how it handles calls</a>
+    </div>
+    <p class="hint">Live in minutes. Keep your phone number. Cancel any month.</p>
   </div>
-  <div class="aside">
-    <div class="sum" aria-label="Example call summary">
-      <div class="sum-head"><span class="eyebrow">Texted to the owner</span><span class="pill Priority">Priority</span></div>
-      <dl><dt>Caller</dt><dd>Dana R. (example)</dd><dt>Issue</dt><dd>AC blowing warm air, unit about 12 years old</dd><dt>Booked</dt><dd><b>Tue 8–10 a.m.</b></dd><dt>Call time</dt><dd class="mono">9:47 PM · after hours</dd></dl>
+
+  <div class="device" aria-label="Example call, playing as an animation">
+    <div class="device-top">
+      <div class="caller">
+        <span class="avatar" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9 4.9 19.1"/></svg></span>
+        <div><b>Incoming call · 9:47 PM</b><span class="hint">Sample HVAC company, after hours</span></div>
+      </div>
+      <span class="timer" id="callTimer">00:00</span>
+    </div>
+    <canvas class="wave" id="wave" aria-hidden="true"></canvas>
+    <div class="transcript" id="transcript" aria-live="off"></div>
+    <div class="week" id="week" aria-label="Next week's schedule">
+      <div class="day"><span>Mon</span><div class="slot">Tune-up</div></div>
+      <div class="day"><span>Tue</span><div class="slot">Install est.</div></div>
+      <div class="day" id="bookDay"><span>Wed</span></div>
+      <div class="day"><span>Thu</span><div class="slot">Furnace</div><div class="slot">Tune-up</div></div>
+      <div class="day"><span>Fri</span></div>
+    </div>
+    <div class="device-foot">
+      <span class="hint" id="callState">Example call</span>
+      <button class="replay" id="replay" type="button">Replay call</button>
     </div>
   </div>
-</div></section>
+</section>
 
-<section class="band alt"><div class="wrap stack" style="gap:28px">
-  <div class="stack"><h2>A missed call is usually a booked job for someone else.</h2>
-  <p class="lede">When a furnace quits, homeowners call down the list until somebody answers. Your techs are on roofs and in crawlspaces, and the office closes at six. That's when the calls come in.</p></div>
-  <div class="grid">
-    <div class="card"><h3>After-hours calls</h3><p class="muted">Nights, weekends and holidays get answered and booked instead of going to voicemail.</p></div>
-    <div class="card"><h3>Busy-season overflow</h3><p class="muted">When the first heat wave or cold snap floods your lines, nobody waits on hold.</p></div>
-    <div class="card"><h3>Hands-full moments</h3><p class="muted">Owner-operators stop choosing between finishing a job and answering the phone.</p></div>
+<!-- PROBLEM: when calls arrive -->
+<section class="band night">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Most emergency calls come in after you close.</h2>
+      <p class="lede">A furnace quits at 10 p.m., not at 10 a.m. Homeowners call down the list until someone answers. Here is what one cold night can look like for a small shop.</p>
+    </div>
+    <div class="timeline" aria-label="Example night of calls from 6 PM to 6 AM">
+      <div class="tl-bar">
+                <a class="tl-call" style="left:4.2%" tabindex="0" aria-label="6:30 PM, no heat"><span class="tip"><b>6:30 PM</b>no heat, baby at home</span></a>
+        <a class="tl-call" style="left:23%" tabindex="0" aria-label="8:45 PM, AC repair request"><span class="tip"><b>8:45 PM</b>heat pump making noise</span></a>
+        <a class="tl-call" style="left:31.5%" tabindex="0" aria-label="9:47 PM, furnace not heating"><span class="tip"><b>9:47 PM</b>furnace blowing cold</span></a>
+        <a class="tl-call" style="left:45%" tabindex="0" aria-label="11:25 PM, carbon monoxide alarm"><span class="tip"><b>11:25 PM</b>CO alarm going off</span></a>
+        <a class="tl-call" style="left:66%" tabindex="0" aria-label="2:05 AM, no heat"><span class="tip"><b>2:05 AM</b>no heat, 19°F outside</span></a>
+        <a class="tl-call" style="left:88%" tabindex="0" aria-label="4:40 AM, water leaking"><span class="tip"><b>4:40 AM</b>water leaking from unit</span></a>
+      </div>
+      <div class="tl-axis num-t"><span>6 PM</span><span>8 PM</span><span>10 PM</span><span>12 AM</span><span>2 AM</span><span>4 AM</span><span>6 AM</span></div>
+      <div class="legend"><span><i style="background:var(--heat)"></i>Calls while you're closed: AfterHours Desk answers every one</span><span class="hint">An example night.</span></div>
+    </div>
   </div>
-</div></section>
+</section>
 
-<section class="band" id="demo"><div class="wrap stack" style="gap:24px">
-  <div class="stack" style="gap:10px"><p class="eyebrow">Demo</p><h2>What a call sounds like</h2>
-  <p class="lede">An example call to a sample HVAC company at 9:47 p.m., and the text the owner gets right after.</p></div>
-  <div class="demo">
-    <div class="call">
-      <div class="call-head"><span class="dot" aria-hidden="true"></span><div><b>Sample HVAC company</b><div class="hint">Example call transcript</div></div></div>
-      <div class="msgs">
-        <div class="msg ai">Thanks for calling, this is the virtual assistant. I can book a service visit, answer questions, or get a message to the team. How can I help?</div>
-        <div class="msg me">Hi, my AC is blowing warm air and it's really hot in here.</div>
-        <div class="msg ai">Sorry to hear that. Let's get a technician out. Can I have your name, please?</div>
-        <div class="msg me">Dana R.</div>
-        <div class="msg ai">Thanks, Dana. What's the best number to reach you?</div>
-        <div class="msg me">555-010-2233</div>
-        <div class="msg ai">That's 5-5-5, 0-1-0, 2-2-3-3. And the service address?</div>
-        <div class="msg me">14 Elm Street.</div>
-        <div class="msg ai">Got it, that's in our area. I have Tuesday 8 to 10 a.m. or Tuesday 1 to 3 p.m. Which works better?</div>
-        <div class="msg me">Morning, please.</div>
-        <div class="msg ai">You're all set for Tuesday between 8 and 10 a.m. You'll get a text confirmation, and the tech will call when they're on the way. Anything else?</div>
+<!-- HOW IT WORKS: a real sequence -->
+<section class="band" id="how">
+  <div class="wrap">
+    <div class="section-head"><h2>Live in minutes, not weeks.</h2></div>
+    <div class="steps">
+      <div class="step"><h3>Fill in one form</h3><p class="muted">Your hours, service area, fees and who handles emergencies. About three minutes.</p></div>
+      <div class="step"><h3>Get your AI number</h3><p class="muted">Your receptionist and a local phone number are created for you automatically. Call it right away to hear it.</p></div>
+      <div class="step"><h3>Forward missed calls</h3><p class="muted">Send busy and after-hours calls to it. Every booking and call summary lands in your inbox.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- SCENARIOS: viewer-driven -->
+<section class="band night" id="calls">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>It handles the hard calls too.</h2>
+      <p class="lede">Pick a call to read how it goes. Each one ends with a summary sent to you.</p>
+    </div>
+    <div class="scenes">
+      <div class="tabs" role="tablist" aria-label="Example calls">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="scenePanel" data-scene="book"><b>A repair booking</b><span>Gets the details and fills an open slot.</span></button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="scenePanel" data-scene="gas"><b>A gas smell</b><span>Safety first. No troubleshooting.</span></button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="scenePanel" data-scene="human"><b>"Is this a real person?"</b><span>Always honest that it's an AI.</span></button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="scenePanel" data-scene="price"><b>"How much for a new furnace?"</b><span>Never makes up a price.</span></button>
+      </div>
+      <div class="panel" id="scenePanel" role="tabpanel" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- CALCULATOR -->
+<section class="band" id="cost">
+  <div class="wrap calc">
+    <div>
+      <div class="section-head" style="margin-bottom:36px">
+        <h2>What missed calls cost you.</h2>
+        <p class="lede">Move the sliders to match your shop. The math runs on your numbers.</p>
+      </div>
+      <div class="sliders">
+        <div class="slider"><label for="cMissed">Calls you miss each week <output id="oMissed" for="cMissed">6</output></label><input id="cMissed" type="range" min="1" max="40" value="6"></div>
+        <div class="slider"><label for="cRate">Share that would have booked <output id="oRate" for="cRate">40%</output></label><input id="cRate" type="range" min="10" max="90" step="5" value="40"></div>
+        <div class="slider"><label for="cTicket">Average job value <output id="oTicket" for="cTicket">$350</output></label><input id="cTicket" type="range" min="100" max="3000" step="50" value="350"></div>
       </div>
     </div>
-    <aside class="side" aria-label="Try it yourself">
-      <div class="callbox">
-        <span class="eyebrow">Try it yourself</span>
-        <p>Call the demo line and pretend your furnace just quit.</p>
-        <b class="num">[DEMO NUMBER]</b>
-        <span class="hint">Answered by the AI receptionist, 24/7.</span>
+    <div class="result" aria-live="polite">
+      <span class="muted">Work you could be losing each month</span>
+      <span class="big" id="cOut">$3,640</span>
+      <p class="muted" id="cExplain">About 10 booked jobs a month that went to whoever picked up.</p>
+      <p class="hint">Starting values are examples. Weeks counted as 4.33 per month.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="band night" id="pricing">
+  <div class="wrap">
+    <div class="section-head"><h2>Simple monthly pricing.</h2><p class="lede">No contracts. Keep your number. Cancel any month.</p></div>
+    <div class="plans">
+      <div class="plan lead">
+        <h3>Founding shops</h3>
+        <p class="price">$99 <small>/ month</small></p>
+        <p class="muted">For our first partners. Setup included, in exchange for honest feedback.</p>
+        <ul><li>After-hours and overflow calls</li><li>Booking into open time slots</li><li>Call summaries by email</li><li>A monthly check-in to tune what it says</li></ul>
+        <a class="btn" href="#signup">Claim a founding spot</a>
       </div>
-      <div class="sum">
-        <div class="sum-head"><span class="eyebrow">Owner gets this text</span><span class="pill Priority">Priority</span></div>
-        <dl><dt>Caller</dt><dd>Dana R.</dd><dt>Phone</dt><dd class="mono">555-010-2233</dd><dt>Address</dt><dd>14 Elm Street</dd><dt>Issue</dt><dd>AC blowing warm air</dd><dt>Booked</dt><dd><b>Tue 8–10 a.m.</b></dd></dl>
+      <div class="plan">
+        <h3>Standard</h3>
+        <p class="price">$199 <small>/ month</small></p>
+        <p class="muted">Plus $299 one-time setup. Includes 300 call minutes a month.</p>
+        <ul><li>Everything in Founding</li><li>Emergency routing to your on-call tech</li><li>Seasonal script updates</li></ul>
+        <a class="btn ghost" href="#signup">Get started</a>
       </div>
-    </aside>
+    </div>
   </div>
-</div></section>
+</section>
 
-<section class="band alt"><div class="wrap stack" style="gap:28px">
-  <h2>Live in minutes</h2>
-  <div class="grid">
-    <div class="stack" style="gap:8px"><span class="step-n">1</span><h3>Fill in the form</h3><p class="muted">Hours, service area, fees and how you handle emergencies. Takes about three minutes.</p></div>
-    <div class="stack" style="gap:8px"><span class="step-n">2</span><h3>Get your number instantly</h3><p class="muted">Your receptionist and a local phone number are created automatically. Call it to hear it work.</p></div>
-    <div class="stack" style="gap:8px"><span class="step-n">3</span><h3>Forward your calls</h3><p class="muted">Send missed and after-hours calls to it. Every booking and call summary lands in your inbox.</p></div>
+<!-- RULES -->
+<section class="band">
+  <div class="wrap">
+    <div class="section-head"><h2>Rules it never breaks.</h2></div>
+    <div class="rules">
+      <div class="rule"><h3>Safety first</h3><p class="muted">Gas smell, CO alarm, smoke or sparking: it tells the caller to get out and call 911 or the gas company.</p></div>
+      <div class="rule"><h3>Honest</h3><p class="muted">It says it's an AI assistant whenever asked and never pretends to be a person.</p></div>
+      <div class="rule"><h3>No guessing</h3><p class="muted">It quotes only the fees you set. If it doesn't know, it takes a message.</p></div>
+      <div class="rule"><h3>No payments</h3><p class="muted">It never takes card numbers or payment details over the phone.</p></div>
+    </div>
   </div>
-</div></section>
+</section>
 
-<section class="band" id="pricing"><div class="wrap stack" style="gap:28px">
-  <div class="stack" style="gap:10px"><p class="eyebrow">Pricing</p><h2>Simple monthly pricing</h2><p class="lede">No long contracts. Cancel any month.</p></div>
-  <div class="grid">
-    <div class="card" style="gap:14px"><h3>Founding pilot</h3><p class="price">$[PILOT] <small>/ month</small></p><p class="muted">For our first few HVAC partners. Setup included in exchange for honest feedback.</p><ul><li>After-hours and overflow calls</li><li>Calendar booking and call summaries</li><li>Monthly tune-up call with us</li></ul><a class="btn" href="#signup" style="margin-top:auto">Claim a pilot spot</a></div>
-    <div class="card" style="gap:14px"><h3>Standard</h3><p class="price">$[MONTHLY] <small>/ month</small></p><p class="muted">Plus a one-time $[SETUP] setup. Includes up to [MINUTES] call minutes a month.</p><ul><li>Everything in the pilot</li><li>Emergency routing to your on-call tech</li><li>Seasonal script updates</li></ul><a class="btn ghost" href="#signup" style="margin-top:auto">Get started</a></div>
+<!-- FAQ -->
+<section class="band night">
+  <div class="wrap">
+    <div class="section-head"><h2>Questions shop owners ask.</h2></div>
+    <div class="faq">
+      <details><summary>Do I need a new phone number?</summary><p>No. Keep your number and forward calls to your AI number when you're busy or closed. Most carriers call this conditional call forwarding.</p></details>
+      <details><summary>Will callers know it's AI?</summary><p>It introduces itself as your virtual assistant and answers honestly if asked. Anyone who wants a person gets a callback or your on-call number.</p></details>
+      <details><summary>Where do the bookings go?</summary><p>Each booking and message is emailed to you right after the call, with the caller's name, number, address, problem and urgency.</p></details>
+      <details><summary>What if it gets something wrong?</summary><p>You see a summary of every call. If it isn't sure, it takes a message instead of guessing, and you can change what it says at any time.</p></details>
+      <details><summary>How long does setup take?</summary><p>Fill in the form below. Your receptionist and number are created automatically, usually within a few minutes.</p></details>
+    </div>
   </div>
-  <div class="stack" style="gap:20px;max-width:780px">
-    <h2 style="font-size:28px">Questions</h2>
-    <div class="stack" style="gap:6px"><h3>Do I need a new phone number?</h3><p class="muted">No. You keep your number and forward calls when you're busy or closed.</p></div>
-    <div class="stack" style="gap:6px"><h3>Will callers know it's AI?</h3><p class="muted">It introduces itself as your virtual assistant and answers honestly if asked. Anyone who wants a person gets transferred or a callback.</p></div>
-    <div class="stack" style="gap:6px"><h3>What if it gets something wrong?</h3><p class="muted">You see every call summary, and we review calls with you each month. If it isn't sure, it takes a message instead of guessing.</p></div>
-  </div>
-</div></section>
+</section>
 
-<section class="band alt" id="about"><div class="wrap stack" style="gap:24px">
-  <div class="stack" style="gap:10px;max-width:760px"><p class="eyebrow">About</p><h2>A front desk for shops that don't have one</h2>
-  <p class="lede">Most heating and cooling companies are small teams where the owner is also a tech. [Your name] started AfterHours Desk in [YOUR CITY] to help local trades stop losing jobs to voicemail. Every setup is done by hand and tested with the owner.</p></div>
-  <div class="grid">
-    <div class="card"><h3>Safety first</h3><p class="muted">Gas smell, CO alarm, smoke or sparking: it tells the caller to get out and call 911 or the gas company. It never troubleshoots.</p></div>
-    <div class="card"><h3>Honest</h3><p class="muted">It says it's an AI assistant when asked and never claims to be a person.</p></div>
-    <div class="card"><h3>No guessing</h3><p class="muted">It only quotes the fees you approve and takes a message when it doesn't know.</p></div>
-    <div class="card"><h3>No payments</h3><p class="muted">It never takes card numbers or payment details over the phone.</p></div>
-  </div>
-</div></section>
-
-<section class="band" id="signup"><div class="wrap stack" style="gap:24px;max-width:900px">
-  <div class="stack" style="gap:10px"><p class="eyebrow">Get started</p><h2>Set up your AI receptionist</h2>
-  <p class="lede">Tell us how your shop works. Your AI receptionist and its phone number are created automatically, usually in under a minute.</p></div>
+<!-- SIGN-UP -->
+<section class="band signup" id="signup">
+  <div class="wrap signup-grid">
+    <div>
+      <h2>Create your receptionist.</h2>
+      <p class="lede" style="margin-top:16px">Tell it how your shop works. It's ready to take calls as soon as your number is active.</p>
+      <div class="side-list">
+        <div><b>1</b><p class="muted">Fill in your shop's details on the right.</p></div>
+        <div><b>2</b><p class="muted">Get your AI phone number by email.</p></div>
+        <div><b>3</b><p class="muted">Call it, then forward your missed calls to it.</p></div>
+      </div>
+    </div>
+    <div class="form-shell">
   <form class="fs" id="signupForm" novalidate>
     <p class="hp"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="field"><label for="f_business">Business name</label><input id="f_business" name="business" required maxlength="80"></div>
@@ -215,19 +429,209 @@ footer.foot .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:spac
     <div class="field full"><label for="f_notes">Anything else the assistant should know</label><textarea id="f_notes" name="notes" rows="3" maxlength="1500" placeholder="Maintenance plan, brands you don't service, financing…"></textarea></div>
     <div class="field"><label for="f_plan">Plan</label><select id="f_plan" name="plan"><option>Founding pilot</option><option>Standard</option><option>Not sure yet</option></select></div>
     <div class="field full row"><button class="btn" type="submit" id="signupBtn">Create my receptionist</button><span class="hint">By submitting you agree to our <a href="/privacy">privacy policy</a>. Don't include passwords or payment details.</span></div>
-    <p class="field full" id="formError" role="alert" hidden style="color:var(--crit);font-weight:600"></p>
+    <p class="field full" id="formError" role="alert" hidden style="font-weight:600"></p>
   </form>
   <div id="signupDone" class="card" hidden aria-live="polite" style="gap:12px">
     <span class="eyebrow">You're signed up</span>
     <h3 id="doneTitle">Setting up your receptionist…</h3>
     <p class="muted" id="doneText">This usually takes under a minute. You can keep this page open or check your email.</p>
-    <b class="num" id="doneNumber" hidden style="font-family:var(--display);font-size:32px;font-weight:800;user-select:all"></b>
+    <b class="num" id="doneNumber" hidden style="font-size:40px;font-weight:900;font-variation-settings:'wdth' 120;user-select:all;color:var(--cool)"></b>
   </div>
-  <p class="muted">Prefer email? Write to <b style="user-select:all">[YOUR EMAIL]</b>.</p>
-</div></section>
+    </div>
+  </div>
+</section>
 </main>
 
-<footer class="foot"><div class="wrap"><span>© 2026 AfterHours Desk · [YOUR CITY, STATE]</span><span><a href="/privacy">Privacy</a> · Calls may be recorded to improve service, with notice to callers.</span></div></footer>
+<footer class="foot"><div class="wrap"><span>© 2026 AfterHours Desk</span><span><a href="/privacy">Privacy</a> &nbsp; Calls may be recorded to improve service, with notice to callers.</span></div></footer>
+
+<!-- Page interactions: hero call, scenarios, calculator. -->
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- hero: live call ---------- */
+  const SCRIPT = [
+    ['ai', "Thanks for calling, this is the virtual assistant. How can I help tonight?"],
+    ['caller', "Our furnace is blowing cold air and it's freezing in here."],
+    ['ai', "Sorry about that. Let's get a technician out. Can I get your name?"],
+    ['caller', "Dana Ruiz."],
+    ['ai', "Thanks, Dana. And the address?"],
+    ['caller', "14 Elm Street, Mason."],
+    ['tool', "Checked the schedule: Wednesday 8 to 10 AM is open."],
+    ['ai', "I have Wednesday from 8 to 10 in the morning. Does that work?"],
+    ['caller', "Yes, perfect."],
+    ['ai', "You're booked for Wednesday, 8 to 10 AM. The tech will call when they're on the way."],
+  ];
+  const WHO = { ai: 'AI', caller: 'Caller', tool: 'System' };
+  const tEl = document.getElementById('transcript');
+  const timerEl = document.getElementById('callTimer');
+  const stateEl = document.getElementById('callState');
+  const bookDay = document.getElementById('bookDay');
+  const canvas = document.getElementById('wave');
+  const ctx = canvas.getContext('2d');
+  let speaker = null, runId = 0, started = 0, raf = 0;
+
+  function sizeCanvas() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  sizeCanvas(); addEventListener('resize', sizeCanvas);
+
+  // Waveform: bars driven by layered sine noise; louder and colored by whoever is talking.
+  function draw(t) {
+    const w = canvas.clientWidth, h = canvas.clientHeight, n = Math.floor(w / 6);
+    ctx.clearRect(0, 0, w, h);
+    const color = speaker === 'caller' ? '#FF8A3D' : speaker === 'ai' ? '#5CC8FF' : '#3A5268';
+    const amp = speaker === 'ai' || speaker === 'caller' ? 1 : 0.12;
+    ctx.fillStyle = color;
+    for (let i = 0; i < n; i++) {
+      const x = i * 6 + 1;
+      const v = Math.abs(Math.sin(i * 0.35 + t / 170) * 0.5 + Math.sin(i * 0.11 - t / 260) * 0.35 + Math.sin(i * 1.7 + t / 90) * 0.15);
+      const bh = Math.max(3, v * amp * (h - 8));
+      ctx.globalAlpha = 0.35 + 0.65 * (1 - Math.abs(i / n - 0.5) * 1.4);
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, (h - bh) / 2, 3, bh, 2) : ctx.rect(x, (h - bh) / 2, 3, bh); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (started) {
+      const s = Math.floor((Date.now() - started) / 1000);
+      timerEl.textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    }
+    raf = requestAnimationFrame(draw);
+  }
+
+  const wait = (ms, id) => new Promise((r) => setTimeout(() => r(id === runId), ms));
+
+  function addLine(kind) {
+    const line = document.createElement('div');
+    line.className = `line ${kind}`;
+    const who = document.createElement('span'); who.className = 'who'; who.textContent = WHO[kind];
+    const say = document.createElement('span'); say.className = 'say';
+    line.append(who, say); tEl.append(line);
+    while (tEl.children.length > 9) tEl.firstChild.remove();
+    return say;
+  }
+
+  function placeBooking() {
+    bookDay.querySelector('.slot.new')?.remove();
+    const s = document.createElement('div'); s.className = 'slot new'; s.textContent = 'Dana R. 8–10'; bookDay.append(s);
+  }
+
+  async function play() {
+    const id = ++runId;
+    tEl.textContent = ''; bookDay.querySelector('.slot.new')?.remove();
+    started = Date.now(); stateEl.textContent = 'Call in progress';
+    for (const [kind, text] of SCRIPT) {
+      const say = addLine(kind);
+      speaker = kind === 'tool' ? null : kind;
+      const cur = document.createElement('span'); cur.className = 'cursor';
+      for (let i = 1; i <= text.length; i++) {
+        say.textContent = text.slice(0, i); say.append(cur);
+        if (!(await wait(kind === 'tool' ? 12 : 26, id))) return;
+      }
+      cur.remove();
+      if (kind === 'tool') placeBooking();
+      speaker = null;
+      if (!(await wait(kind === 'caller' ? 380 : 520, id))) return;
+    }
+    started = 0; stateEl.textContent = 'Booked. Summary sent to the owner.';
+    if (await wait(6000, id)) play();
+  }
+
+  function showStatic() {
+    tEl.textContent = '';
+    for (const [kind, text] of SCRIPT.slice(-7)) addLine(kind).textContent = text;
+    placeBooking(); timerEl.textContent = '01:12'; stateEl.textContent = 'Booked. Summary sent to the owner.';
+    speaker = null;
+  }
+
+  document.getElementById('replay').addEventListener('click', () => { reduce ? showStatic() : play(); });
+  if (reduce) { showStatic(); draw(0); cancelAnimationFrame(raf); }
+  else {
+    // Pause the animation when the device is off screen.
+    let visible = true;
+    new IntersectionObserver(([e]) => {
+      visible = e.isIntersecting;
+      if (visible && !raf) raf = requestAnimationFrame(draw);
+      if (!visible) { cancelAnimationFrame(raf); raf = 0; }
+    }).observe(canvas);
+    raf = requestAnimationFrame(draw);
+    play();
+  }
+
+  /* ---------- scenarios ---------- */
+  const SCENES = {
+    book: { lines: [
+      ['caller', 'My AC is making a grinding noise and barely cooling.'],
+      ['ai', "I can get someone out. What's your name and the best number to reach you?"],
+      ['caller', 'Mike, 513-555-0177.'],
+      ['ai', "That's 5-1-3, 5-5-5, 0-1-7-7. And the address?"],
+      ['ai', 'I have Thursday 10 to 12 or Thursday 1 to 3. Which works better?'],
+    ], tag: 'Routine', out: 'Booked Thursday 10–12. Summary emailed to the shop.' },
+    gas: { lines: [
+      ['caller', 'I smell gas near my furnace. What should I check?'],
+      ['ai', 'Please leave the building right away and call 911 or your gas company from outside. Your safety comes first.'],
+      ['ai', "Once you're safe, I'll have the team call you back. What number should they use?"],
+    ], tag: 'Emergency', out: 'No troubleshooting. Marked EMERGENCY and sent to the owner right away.' },
+    human: { lines: [
+      ['caller', 'Wait, am I talking to a real person?'],
+      ['ai', "I'm an AI assistant for the shop. I can book a visit or take a message for the team."],
+      ['caller', "I'd rather talk to someone."],
+      ['ai', "Of course. I'll have a team member call you back. What's the best number?"],
+    ], tag: 'Priority', out: 'Honest about being AI. Callback request sent to the owner.' },
+    price: { lines: [
+      ['caller', 'How much is a new furnace?'],
+      ['ai', "That depends on your home and the system, so I can't give an exact price over the phone."],
+      ['ai', 'Our technicians do free estimates. Would you like me to book one?'],
+    ], tag: 'Routine', out: 'Quotes only the fees the shop has set. Offers an estimate visit instead.' },
+  };
+  const panel = document.getElementById('scenePanel');
+  function showScene(key) {
+    const s = SCENES[key];
+    panel.textContent = '';
+    for (const [kind, text] of s.lines) {
+      const line = document.createElement('div'); line.className = `line ${kind}`;
+      const who = document.createElement('span'); who.className = 'who'; who.textContent = WHO[kind];
+      const say = document.createElement('span'); say.className = 'say'; say.textContent = text;
+      line.append(who, say); panel.append(line);
+    }
+    const out = document.createElement('div'); out.className = 'outcome';
+    const tag = document.createElement('span'); tag.className = `tag ${s.tag}`; tag.textContent = s.tag;
+    const txt = document.createElement('span'); txt.textContent = s.out;
+    out.append(tag, txt); panel.append(out);
+  }
+  const tabs = [...document.querySelectorAll('.tab')];
+  tabs.forEach((tab, i) => {
+    tab.addEventListener('click', () => {
+      tabs.forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+      showScene(tab.dataset.scene);
+    });
+    tab.addEventListener('keydown', (e) => {
+      const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return;
+      e.preventDefault(); const next = tabs[(i + d + tabs.length) % tabs.length]; next.focus(); next.click();
+    });
+  });
+  showScene('book');
+
+  /* ---------- calculator ---------- */
+  const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  const $ = (id) => document.getElementById(id);
+  function calc() {
+    const missed = +$('cMissed').value, rate = +$('cRate').value / 100, ticket = +$('cTicket').value;
+    const jobs = missed * 4.33 * rate;
+    $('oMissed').textContent = missed;
+    $('oRate').textContent = Math.round(rate * 100) + '%';
+    $('oTicket').textContent = money(ticket);
+    $('cOut').textContent = money(jobs * ticket);
+    $('cExplain').textContent = `About ${Math.round(jobs)} booked ${Math.round(jobs) === 1 ? 'job' : 'jobs'} a month that went to whoever picked up.`;
+  }
+  ['cMissed', 'cRate', 'cTicket'].forEach((id) => $(id).addEventListener('input', calc));
+  calc();
+})();
+</script>
+
+<!-- Sign-up form: posts to /api/signup and shows the new number when it's ready. -->
 <script>
 (() => {
   const form = document.getElementById('signupForm');
@@ -255,7 +659,7 @@ footer.foot .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:spac
       if (!input) { formError.textContent = msg; formError.hidden = false; continue; }
       input.setAttribute('aria-invalid', 'true');
       const p = document.createElement('span');
-      p.className = 'hint field-error'; p.style.color = 'var(--crit)'; p.textContent = msg;
+      p.className = 'hint field-error'; p.textContent = msg;
       input.closest('.field').append(p);
       first = first || input;
     }
