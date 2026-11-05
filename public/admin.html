@@ -40,6 +40,9 @@ input{font:inherit;color:var(--fg);background:var(--bg);border:1.5px solid var(-
 .stat b{display:block;font-family:var(--display);font-size:40px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums;font-variation-settings:'wdth' 120}
 .stat.hot{border-color:var(--heat);background:linear-gradient(180deg,rgba(255,138,61,.10),var(--surface))}
 .stat.hot b{color:var(--heat)}
+.meter{display:block;width:110px;height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:var(--ok)}
+.meter.warn i{background:var(--warn)}.meter.over i{background:var(--crit)}
 .pill{display:inline-flex;align-items:center;font-size:12.5px;font-weight:700;padding:2px 10px;border-radius:99px;white-space:nowrap}
 .s-active{background:var(--ok-bg);color:var(--ok)}
 .s-pending_approval{background:var(--warn-bg);color:var(--warn)}
@@ -106,10 +109,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
       <div class="stat"><span class="muted">Live</span><b id="nActive">0</b></div>
       <div class="stat"><span class="muted">Failed setups</span><b id="nFailed">0</b></div>
       <div class="stat"><span class="muted">All shops</span><b id="nAll">0</b></div>
+      <div class="stat"><span class="muted">Call cost this month</span><b id="nCost">$0</b></div>
     </div>
     <div class="tablebox">
       <table>
-        <thead><tr><th>Shop</th><th>Contact</th><th>Status</th><th>AI phone number</th><th>Signed up</th><th></th></tr></thead>
+        <thead><tr><th>Shop</th><th>Contact</th><th>Status</th><th>AI phone number</th><th>Minutes this month</th><th>Signed up</th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
       <div class="empty" id="empty" hidden>No shops yet. When someone fills in the sign-up form on your website, they appear here.</div>
@@ -173,6 +177,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     $('#nActive').textContent = count('active');
     $('#nFailed').textContent = count('failed');
     $('#nAll').textContent = clients.length;
+    $('#nCost').textContent = `$${clients.reduce((s, c) => s + (c.usage?.cost || 0), 0).toFixed(2)}`;
     const tb = $('#rows'); tb.textContent = '';
     $('#empty').hidden = clients.length > 0;
     for (const c of clients) {
@@ -187,9 +192,23 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
         el('td', {}, el('div', { text: c.contact }), el('div', { class: 'hint', text: c.email }), el('div', { class: 'mono', text: pretty(c.phone) })),
         el('td', {}, el('span', { class: `pill s-${c.status}`, text: LABEL[c.status] || c.status }), c.error ? el('div', { class: 'hint', style: 'color:var(--crit);max-width:260px', text: c.error }) : null),
         el('td', { class: 'mono', text: c.phoneNumber ? pretty(c.phoneNumber) : '—' }),
+        el('td', {}, usageCell(c.usage)),
         el('td', { class: 'mono', text: when(c.createdAt) }),
         el('td', {}, actions)));
     }
+  }
+
+  // "123 / 300" with a bar that turns orange at 80% and red past 100%.
+  function usageCell(u) {
+    if (!u) return el('span', { class: 'muted', text: '—' });
+    const share = u.included ? u.minutes / u.included : 0;
+    const box = el('div', {}, el('span', { class: 'mono', text: u.included ? `${u.minutes} / ${u.included}` : String(u.minutes) }),
+      el('div', { class: 'hint', text: `${u.calls} call${u.calls === 1 ? '' : 's'} · $${u.cost.toFixed(2)}` }));
+    if (u.included) {
+      const bar = el('span', { class: `meter${share >= 1 ? ' over' : share >= 0.8 ? ' warn' : ''}` }, el('i', { style: `width:${Math.min(100, Math.round(share * 100))}%` }));
+      box.append(bar);
+    }
+    return box;
   }
 
   async function act(ev, c, action, doneMsg) {
@@ -206,7 +225,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     selected = id;
     const box = $('#detail');
     try {
-      const { client: c, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
+      const { client: c, usage, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
       box.textContent = '';
       const d = c.details || {};
       box.append(
@@ -217,6 +236,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Office / on-call' }), el('dd', { class: 'mono', text: `${pretty(d.office)} / ${pretty(d.oncall)}` }),
           el('dt', { text: 'Fees' }), el('dd', { text: [d.fee, d.afterfee].filter(Boolean).join(' · ') || '—' }),
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
+          el('dt', { text: 'This month' }), el('dd', {}, usageCell(usage)),
           el('dt', { text: 'Vapi assistant' }), el('dd', { class: 'mono', text: c.vapiAssistantId || '—' })),
         el('h3', { text: `Bookings and messages (${bookings.length})` }),
         bookings.length ? el('div', { class: 'tablebox' }, el('table', {},
@@ -230,7 +250,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
             el('td', { class: 'mono', text: when(b.created_at) })))))) : el('p', { class: 'muted', text: 'None yet.' }),
         el('h3', { text: `Calls (${calls.length})` }),
         calls.length ? el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, ...calls.map((k) => el('div', { class: 'card' },
-          el('div', { class: 'row spread' }, el('b', { class: 'mono', text: pretty(k.caller_phone) }), el('span', { class: 'hint', text: when(k.created_at) })),
+          el('div', { class: 'row spread' }, el('b', { class: 'mono', text: pretty(k.caller_phone) }),
+            el('span', { class: 'hint', text: [when(k.created_at), k.duration_s != null ? `${Math.floor(k.duration_s / 60)}:${String(k.duration_s % 60).padStart(2, '0')}` : '', k.cost != null ? `$${Number(k.cost).toFixed(2)}` : '', k.source === 'recovered' ? 'recovered late' : ''].filter(Boolean).join(' · ') })),
           el('p', { text: k.summary || '(no summary)' }),
           k.transcript ? el('details', {}, el('summary', { text: 'Transcript' }), el('pre', { text: k.transcript })) : null))) : el('p', { class: 'muted', text: 'None yet.' }));
       box.hidden = false;

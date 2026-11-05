@@ -52,6 +52,14 @@ const SCHEMA = [
   )`,
 ];
 
+// Columns added after the first release. Each runs once; "already exists" errors are ignored,
+// so older databases pick them up on the next start.
+const MIGRATIONS = [
+  'ALTER TABLE calls ADD COLUMN duration_s INTEGER',  // how long the call lasted
+  'ALTER TABLE calls ADD COLUMN cost REAL',
+  'ALTER TABLE calls ADD COLUMN source TEXT',
+];
+
 // ---- Drivers: all(sql, params) -> rows, run(sql, params), close(). SQL uses ? placeholders. ----
 
 async function sqliteDriver(path) {
@@ -109,6 +117,9 @@ export async function openDb(target) {
   const opts = typeof target === 'string' ? { path: target } : target;
   const d = opts.url ? await postgresDriver(opts.url) : await sqliteDriver(opts.path);
   for (const stmt of SCHEMA) await d.run(stmt);
+  for (const stmt of MIGRATIONS) {
+    try { await d.run(stmt); } catch (e) { if (!/duplicate column|already exists/i.test(e.message)) throw e; }
+  }
   const one = async (sql, params) => (await d.all(sql, params))[0];
 
   const api = {
@@ -176,16 +187,32 @@ export async function openDb(target) {
       return d.all('SELECT * FROM bookings WHERE client_id = ? ORDER BY created_at DESC', [clientId]);
     },
 
-    async saveCall({ id, clientId, callerPhone, summary, transcript, endedReason }) {
-      await d.run(`INSERT INTO calls (id, client_id, caller_phone, summary, transcript, ended_reason, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)
+    async saveCall({ id, clientId, callerPhone, summary, transcript, endedReason, durationS, cost, source, createdAt }) {
+      await d.run(`INSERT INTO calls (id, client_id, caller_phone, summary, transcript, ended_reason, duration_s, cost, source, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT (id) DO UPDATE SET client_id = excluded.client_id, caller_phone = excluded.caller_phone,
-                     summary = excluded.summary, transcript = excluded.transcript, ended_reason = excluded.ended_reason`,
-        [id, clientId ?? null, callerPhone ?? null, summary ?? null, transcript ?? null, endedReason ?? null, now()]);
+                     summary = excluded.summary, transcript = excluded.transcript, ended_reason = excluded.ended_reason,
+                     duration_s = excluded.duration_s, cost = excluded.cost`,
+        [id, clientId ?? null, callerPhone ?? null, summary ?? null, transcript ?? null, endedReason ?? null,
+         Number.isFinite(durationS) ? Math.round(durationS) : null, Number.isFinite(cost) ? cost : null, source ?? 'webhook', createdAt ?? now()]);
+    },
+
+    async getCall(id) {
+      return (await one('SELECT * FROM calls WHERE id = ?', [id])) ?? null;
     },
 
     async listCalls(clientId) {
       return d.all('SELECT * FROM calls WHERE client_id = ? ORDER BY created_at DESC', [clientId]);
+    },
+
+    // Calls since an ISO time, for usage totals.
+    async callsSince(clientId, sinceIso) {
+      return d.all('SELECT duration_s, cost, created_at FROM calls WHERE client_id = ? AND created_at >= ?', [clientId, sinceIso]);
+    },
+
+    async ping() {
+      await d.all('SELECT 1 AS ok');
+      return true;
     },
 
     async getSetting(key) {

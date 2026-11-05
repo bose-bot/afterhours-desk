@@ -46,6 +46,12 @@ export function loadConfig(env = process.env) {
 
     timezone: env.DEFAULT_TIMEZONE || 'America/New_York',
 
+    // Call minutes included in a plan each month (the website says 300). You get an email at 80% and 100%.
+    // Calls keep being answered past it. 0 turns the alerts off.
+    includedMinutes: int(env.INCLUDED_MINUTES, 300),
+    // How often to fetch call reports from Vapi that never reached this server. 0 turns it off.
+    recoverEveryMinutes: int(env.RECOVER_EVERY_MINUTES, 10),
+
     mail: {
       // Resend's HTTP API works on hosts that block SMTP ports. Takes priority over SMTP when set.
       resendApiKey: env.RESEND_API_KEY || '',

@@ -1,5 +1,5 @@
 // Turns a sign-up into a live receptionist: Vapi assistant -> phone number -> welcome email.
-import { buildSystemPrompt, firstMessage, toolDefinitions } from './prompt.js';
+import { buildSystemPrompt, firstMessage, toolDefinitions, transferNumber } from './prompt.js';
 import { welcomeEmail } from './emails.js';
 
 export function webhookUrl(config, clientId) {
@@ -16,7 +16,7 @@ export function assistantBody(config, client) {
       provider: config.vapi.modelProvider,
       model: config.vapi.model,
       messages: [{ role: 'system', content: buildSystemPrompt(client) }],
-      tools: toolDefinitions(url),
+      tools: toolDefinitions(url, { transferTo: transferNumber(client) }),
     },
     server: { url },
     serverMessages: ['end-of-call-report'],
@@ -26,6 +26,15 @@ export function assistantBody(config, client) {
     body.voice = { provider: config.vapi.voiceProvider, voiceId: config.vapi.voiceId };
   }
   return body;
+}
+
+// If Vapi can't start the assistant (deleted, misconfigured, an outage), the call rings a person
+// instead of failing: the on-call number, then the office, then the owner's mobile.
+export function fallbackDestination(client) {
+  if (client.status === 'demo') return null;
+  const d = client.details || {};
+  const number = [d.oncall, d.office, client.phone].find((n) => /^\+\d{8,15}$/.test(n || ''));
+  return number ? { type: 'number', number, message: 'Connecting you to the team now.' } : null;
 }
 
 function pretty(e164) {
@@ -48,6 +57,8 @@ export function suggestedAreaCodes(message) {
  */
 async function createNumberWithFallback(vapi, client, config, logger) {
   const base = { provider: 'vapi', assistantId: client.vapiAssistantId, name: client.business.slice(0, 40) };
+  const fallback = fallbackDestination(client);
+  if (fallback) base.fallbackDestination = fallback;
   const tried = new Set();
   const queue = [client.details.areaCode, config.vapi.defaultAreaCode].filter(Boolean);
   let lastErr;
@@ -152,5 +163,8 @@ export async function updateScript(clientId, { db, vapi, config }) {
   if (!client?.vapiAssistantId) return { client, updated: false };
   const { name, firstMessage, model, server, serverMessages, voice } = assistantBody(config, client);
   await vapi.updateAssistant(client.vapiAssistantId, { name, firstMessage, model, server, serverMessages, ...(voice ? { voice } : {}) });
+  // Shops set up before the fallback existed get it now.
+  const fallback = fallbackDestination(client);
+  if (client.vapiPhoneId && fallback) await vapi.updatePhoneNumber(client.vapiPhoneId, { fallbackDestination: fallback });
   return { client, updated: true };
 }

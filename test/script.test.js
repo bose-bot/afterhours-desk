@@ -25,8 +25,8 @@ for (const line of SHARED) {
   });
 }
 
-test('the greeting names the shop and offers what it can do', () => {
-  assert.equal(firstMessage(client), 'Thanks for calling Maple Row Heating & Air, this is the virtual assistant. I can book a visit or take a message for the team. How can I help?');
+test('the greeting names the shop, gives the recording notice, and offers what it can do', () => {
+  assert.equal(firstMessage(client), 'Thanks for calling Maple Row Heating & Air, this is the virtual assistant. Calls are recorded so the team gets your details. I can book a visit or take a message for the team. How can I help?');
 });
 
 test('the example calls use the real business name, and the facts come after them', () => {
@@ -46,7 +46,7 @@ test('Update script pushes the new wording to a live receptionist', async () => 
     assert.equal(assistantId, (await t.db.getClient(id)).vapiAssistantId);
     assert.match(body.model.messages[0].content, /EXAMPLE CALLS/);
     assert.match(body.firstMessage, /^Thanks for calling Maple Row/);
-    assert.equal(body.model.tools.length, 3);
+    assert.equal(body.model.tools.length, 4, 'three functions plus the on-call transfer');
   } finally { await t.close(); }
 });
 

@@ -6,6 +6,8 @@ import { provisionClient, refreshNumber, updateScript } from './provision.js';
 import { buildDemo, currentDemo } from './demo.js';
 import { WebsiteError } from './website.js';
 import { createWebhookHandler, isAuthorized } from './webhook.js';
+import { usageThisMonth } from './usage.js';
+import { recoverCalls } from './recover.js';
 import { timingSafeEqual } from 'node:crypto';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -55,7 +57,11 @@ export function createApp(deps) {
 
   const allowSignup = rateLimiter(config.signupsPerIpPerHour);
 
-  app.get('/healthz', (_req, res) => res.json({ ok: true }));
+  // Uptime monitors should watch this: it fails if the database can't be reached, not just if the process is up.
+  app.get('/healthz', async (_req, res) => {
+    try { await db.ping(); res.json({ ok: true }); }
+    catch (e) { logger.error(`[health] ${e.message}`); res.status(503).json({ ok: false, error: 'database unreachable' }); }
+  });
 
   // ---- Public sign-up ----
   app.post('/api/signup', wrap(async (req, res) => {
@@ -109,7 +115,15 @@ export function createApp(deps) {
     if (!want.length || given.length !== want.length || !timingSafeEqual(given, want)) return res.status(401).json({ error: 'unauthorized' });
     next();
   });
-  admin.get('/clients', wrap(async (_req, res) => res.json({ clients: (await db.listClients()).filter((c) => c.status !== 'demo') })));
+  const usageOf = (c) => usageThisMonth(db, c, { now: (deps.now || (() => new Date()))(), timezone: config.timezone, includedMinutes: config.includedMinutes });
+  admin.get('/clients', wrap(async (_req, res) => {
+    const clients = (await db.listClients()).filter((c) => c.status !== 'demo');
+    res.json({ clients: await Promise.all(clients.map(async (c) => ({ ...c, usage: await usageOf(c) }))) });
+  }));
+  admin.post('/recover-calls', async (_req, res) => {
+    try { res.json({ ok: true, ...(await recoverCalls(deps)) }); }
+    catch (e) { logger.error(`[recover] ${e.message}`); res.status(502).json({ error: e.message }); }
+  });
   admin.get('/demo', wrap(async (_req, res) => res.json({ demo: await currentDemo(deps) })));
   admin.post('/demo', async (req, res) => {
     try {
@@ -123,7 +137,7 @@ export function createApp(deps) {
   admin.get('/clients/:id', wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'not found' });
-    res.json({ client: c, bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
+    res.json({ client: c, usage: await usageOf(c), bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
   }));
   const startSetup = (allowed) => wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);

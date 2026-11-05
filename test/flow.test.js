@@ -19,9 +19,10 @@ test('sign-up goes live automatically: assistant, number, emails', async () => {
 
     const [[, assistant], [, phone]] = t.vapi.calls;
     assert.match(assistant.model.messages[0].content, /Maple Row Heating & Air/);
-    assert.equal(assistant.model.tools.length, 3);
+    assert.equal(assistant.model.tools.length, 4, 'three functions plus the on-call transfer');
     assert.equal(assistant.server.url, `https://desk.example.com/api/vapi/webhook?client=${id}&token=${SECRET}`);
-    assert.deepEqual(phone, { provider: 'vapi', assistantId: client.vapiAssistantId, name: 'Maple Row Heating & Air', numberDesiredAreaCode: '513' });
+    assert.deepEqual(phone, { provider: 'vapi', assistantId: client.vapiAssistantId, name: 'Maple Row Heating & Air', numberDesiredAreaCode: '513',
+      fallbackDestination: { type: 'number', number: '+15135550100', message: 'Connecting you to the team now.' } });
 
     const subjects = t.mailer.sent.map((m) => `${m.to}: ${m.subject}`);
     assert.deepEqual(subjects, [

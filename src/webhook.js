@@ -2,6 +2,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { openSlots } from './scheduling.js';
 import { callSummaryEmail } from './emails.js';
+import { callDuration, checkUsageAlerts } from './usage.js';
 
 const URGENCIES = ['Emergency', 'Priority', 'Routine'];
 const clip = (v, n = 300) => (v == null ? '' : String(v)).trim().slice(0, n);
@@ -68,7 +69,8 @@ async function runTool(call, client, { db, now }) {
   return { error: `Unknown tool ${call.name}` };
 }
 
-export function createWebhookHandler({ db, mailer, config, logger = console, now = () => new Date() }) {
+export function createWebhookHandler(deps) {
+  const { db, mailer, config, logger = console, now = () => new Date() } = deps;
   return async function vapiWebhook(req, res) {
     if (!isAuthorized(req, config.webhookSecret)) return res.status(401).json({ error: 'unauthorized' });
 
@@ -96,11 +98,17 @@ export function createWebhookHandler({ db, mailer, config, logger = console, now
       const summary = clip(message.analysis?.summary ?? message.summary, 4000);
       const transcript = clip(message.artifact?.transcript ?? message.transcript, 50_000);
       const callerPhone = clip(message.call?.customer?.number ?? message.customer?.number, 40);
-      await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80) });
+      // If the recovery job already handled this call (the report came very late), don't email twice.
+      const seen = await db.getCall(callId);
+      const cost = Number.isFinite(message.cost) ? message.cost : (Number.isFinite(message.call?.cost) ? message.call.cost : null);
+      await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80), durationS: callDuration(message), cost, source: 'webhook' });
 
-      const items = (await db.listBookings(client.id)).filter((b) => b.call_id === callId);
-      mailer.send(callSummaryEmail(config, client, { items, callerPhone, summary })
-      ).catch((e) => logger.error(`[mail] call summary failed: ${e.message}`));
+      if (!seen) {
+        const items = (await db.listBookings(client.id)).filter((b) => b.call_id === callId);
+        mailer.send(callSummaryEmail(config, client, { items, callerPhone, summary })
+        ).catch((e) => logger.error(`[mail] call summary failed: ${e.message}`));
+        checkUsageAlerts(client, deps).catch((e) => logger.error(`[usage] ${e.message}`));
+      }
     }
 
     return res.status(200).json({});

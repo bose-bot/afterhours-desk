@@ -30,6 +30,8 @@ export function fakeVapi({ failPhone = false, numberLater = false, availableArea
     },
     async getPhoneNumber(id) { calls.push(['getPhoneNumber', id]); return { id, number: '+15135550177' }; },
     async updatePhoneNumber(id, body) { calls.push(['updatePhoneNumber', id, body]); return { id }; },
+    callList: [],
+    async listCalls(params) { calls.push(['listCalls', params]); return this.callList; },
   };
 }
 

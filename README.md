@@ -17,8 +17,12 @@ Sign-up form ──► Vapi assistant created ──► local phone number assig
 - **Automatic setup.** Each sign-up creates its own [Vapi](https://vapi.ai) assistant with that shop's hours, service area and fees, gives it a phone number in the shop's area code, and emails the owner the number plus call-forwarding steps.
 - **Real booking.** The receptionist offers open 2-hour windows from the shop's weekly hours, in the shop's own time zone, and a window can't be booked twice.
 - **Safety first.** Gas smell, CO alarm, smoke or sparking: callers are told to leave and call 911 or the gas company, and the owner gets an EMERGENCY email.
-- **Honest.** The assistant says it's an AI when asked, never quotes prices the shop didn't list, and never takes payment details.
+- **Emergency routing.** If the shop gives an on-call number, emergencies and urgent no-heat or no-cool calls are transferred live to that tech, after the details are saved. The number is never read out to callers.
+- **A person if the AI can't answer.** Each shop's number has a fallback: if Vapi can't start the assistant, the call rings the on-call number, then the office, then the owner's mobile.
+- **Honest.** The greeting says it's the virtual assistant and that calls are recorded. It never claims to be human, never quotes prices the shop didn't list, and never takes payment details.
 - **Call summaries.** After every call the shop gets the bookings, messages and Vapi's summary by email.
+- **No lost reports.** If the server was asleep or restarting when a call ended, it fetches the missed reports from Vapi every 10 minutes and still emails the shop, once.
+- **Minutes and costs.** Every call's length and Vapi cost are stored. The admin page shows each shop's minutes this month against its plan, and you get an email when a shop reaches 80% and 100% of its included minutes. Calls keep being answered past the limit.
 - **Protected from abuse.** Honeypot field, per-IP rate limit, a hard cap on clients, and an optional manual-approval mode.
 - **Recovers from failures.** If a setup step fails, half-made resources are cleaned up, you get an alert, and one admin call retries it.
 
@@ -31,7 +35,7 @@ git clone https://github.com/<you>/afterhours-desk.git
 cd afterhours-desk
 npm install
 cp .env.example .env      # then fill in the required values
-npm test                  # 21 tests, uses a fake Vapi, no account needed
+npm test                  # 62 tests, uses a fake Vapi, no account needed
 npm start
 ```
 
@@ -82,7 +86,9 @@ Click the button, paste the same keys on the setup screen, and deploy. It create
 | `PROVISION_MODE` | `approval` (default) holds sign-ups until you approve them. `auto` goes live instantly. |
 | `MAX_CLIENTS` | Stops new sign-ups once this many clients exist. Start low. |
 | `VAPI_MODEL`, `VAPI_VOICE_*` | Pick the model and voice. Empty voice uses Vapi's default. |
-| `OPERATOR_EMAIL` | Where new-client and failure alerts go. |
+| `OPERATOR_EMAIL` | Where new-client, failure and minute alerts go. |
+| `INCLUDED_MINUTES` | Call minutes in a plan each month (default 300, as on the website). Alerts at 80% and 100%. `0` turns them off. |
+| `RECOVER_EVERY_MINUTES` | How often to fetch call reports that never reached the server (default 10). `0` turns it off. |
 
 Every Vapi phone minute and every number costs money on your Vapi account. Set `MAX_CLIENTS`, and keep `approval` mode on until you're charging clients.
 
@@ -97,6 +103,8 @@ All admin calls need `Authorization: Bearer $ADMIN_TOKEN`. If you didn't set `AD
 | `POST /api/admin/clients/:id/approve` | Start setup for a client waiting for approval. |
 | `POST /api/admin/clients/:id/retry` | Retry a failed setup. |
 | `POST /api/admin/clients/:id/refresh-number` | Fetch a number that wasn't assigned yet at setup. |
+| `POST /api/admin/clients/:id/update-script` | Send the latest script, greeting, tools and phone fallback to a live shop. |
+| `POST /api/admin/recover-calls` | Fetch any call reports from Vapi that never arrived, right now. |
 
 ```bash
 curl -H "Authorization: Bearer $ADMIN_TOKEN" https://your-app.example.com/api/admin/clients
@@ -119,7 +127,10 @@ Webhook security: each assistant's server URL carries a per-deployment secret to
 
 ## Before you take real customers
 
-- **Call recording and AI disclosure laws** differ by state. Some states require every party's consent to record. Check the rules where your clients and their callers are.
+- **Move off free hosting.** A free server goes to sleep when idle. The keep-awake ping and the report recovery soften that, but a paid plan (about $7 a month on Render) keeps tool calls fast during live calls.
+- **Watch the health check.** `/healthz` fails when the database can't be reached. Point a free uptime monitor (UptimeRobot, Better Stack, or cron-job.org's failure alerts) at it so you hear about an outage before a shop does.
+- **Test the transfer once on your real number.** Call the shop's AI number, say you smell gas, and check the on-call phone rings. Free Vapi numbers can't place outbound calls; if the transfer doesn't go through, import a Twilio number for that shop.
+- **Call recording and AI disclosure laws** differ by state. The greeting tells callers the call is recorded, which covers states that need every party's consent. Check the rules where your clients and their callers are.
 - **Bookings are requests.** They're stored here and emailed to the shop; they don't write into ServiceTitan, Housecall Pro or Google Calendar yet. That's the most useful next contribution.
 - **Free Vapi numbers are inbound-only.**
 - The privacy page is a template, not legal advice.
@@ -128,7 +139,7 @@ Webhook security: each assistant's server URL carries a per-deployment secret to
 
 - Calendar sync (Google Calendar, then field-service tools)
 - SMS summaries
-- Stripe billing with automatic pause on failed payment
+- Stripe billing with automatic pause on failed payment, using the minute counts already stored
 - Admin dashboard page
 - Other trades: plumbing, electrical, roofing
 

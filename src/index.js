@@ -5,6 +5,7 @@ import { createVapiClient } from './vapi.js';
 import { createMailer } from './mailer.js';
 import { createApp } from './server.js';
 import { ensureSecrets } from './secrets.js';
+import { recoverCalls } from './recover.js';
 
 // Node's default listens on IPv6 and IPv4 where available (falls back to IPv4 only). Override with HOST.
 const listen = (app, cb) => (process.env.HOST ? app.listen(config.port, process.env.HOST, cb) : app.listen(config.port, cb));
@@ -34,6 +35,12 @@ if (problems.length) {
   const vapi = createVapiClient({ apiKey: config.vapi.apiKey, baseUrl: config.vapi.baseUrl });
   const mailer = createMailer(config.mail);
   const app = createApp({ db, vapi, mailer, config });
+  // Pick up call reports that were lost while the server was asleep or restarting.
+  if (config.recoverEveryMinutes > 0) {
+    const recover = () => recoverCalls({ db, vapi, mailer, config }).catch((e) => console.error(`[recover] ${e.message}`));
+    setTimeout(recover, 30_000).unref();
+    setInterval(recover, config.recoverEveryMinutes * 60_000).unref();
+  }
   server = listen(app, () => {
     console.log(`${config.brandName} running at ${config.publicUrl} on port ${config.port} (${config.provisionMode} setup, max ${config.maxClients} clients, email: ${mailer.provider})`);
     if (!mailer.enabled) console.warn('Email is off: set RESEND_API_KEY and MAIL_FROM to send welcome emails and call summaries.');

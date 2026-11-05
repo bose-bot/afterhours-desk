@@ -75,14 +75,15 @@ ${brand}`;
 }
 
 /** items: bookings/messages saved during this call (rows from the bookings table). */
-export function callSummaryEmail(config, client, { items, callerPhone, summary }) {
+export function callSummaryEmail(config, client, { items, callerPhone, summary, late = false }) {
   const brand = config.brandName;
   const urgent = items.some((b) => b.urgency === 'Emergency');
   const who = items[0]?.caller_name || callerPhone || 'new caller';
   const lines = items.map((b) => b.kind === 'booking'
     ? `BOOKED ${b.slot_label}: ${b.caller_name} ${b.caller_phone} | ${b.address} | ${b.issue} [${b.urgency}]`
     : `MESSAGE [${b.urgency}]: ${b.caller_name || 'Unknown'} ${b.caller_phone || callerPhone} | ${b.issue}`);
-  const text = `${lines.length ? lines.join('\n') + '\n\n' : ''}Caller: ${callerPhone || 'unknown'}\n\nSummary:\n${summary || '(no summary)'}\n`;
+  const lateNote = 'This report arrived late because our server could not be reached when the call ended. If the caller asked for a booking, check the summary and call them to confirm.';
+  const text = `${late ? lateNote + '\n\n' : ''}${lines.length ? lines.join('\n') + '\n\n' : ''}Caller: ${callerPhone || 'unknown'}\n\nSummary:\n${summary || '(no summary)'}\n`;
 
   const cards = items.map((b) => {
     const color = URGENCY[b.urgency] || C.dim;
@@ -102,7 +103,8 @@ export function callSummaryEmail(config, client, { items, callerPhone, summary }
     `, b.urgency === 'Emergency' ? C.crit : C.line);
   }).join('');
 
-  const body = (urgent ? `<tr><td style="background:${C.crit};color:#2A0905;border-radius:14px;padding:14px 18px;font-size:15px;font-weight:800;">Emergency call. The caller was told to leave and call 911 or the gas company.</td></tr><tr><td style="height:14px;"></td></tr>` : '')
+  const body = (late ? panel(`<div style="font-size:15px;line-height:1.6;color:${C.ink};">${esc(lateNote)}</div>`, C.heat) : '')
+    + (urgent ? `<tr><td style="background:${C.crit};color:#2A0905;border-radius:14px;padding:14px 18px;font-size:15px;font-weight:800;">Emergency call. The caller was told to leave and call 911 or the gas company.</td></tr><tr><td style="height:14px;"></td></tr>` : '')
     + (cards || panel(`<div style="font-size:20px;font-weight:800;margin-bottom:8px;">A caller reached your receptionist</div><div style="font-size:15px;color:${C.dim};">No booking or message was left. The summary is below.</div>`))
     + panel(`
       <div style="font-size:14px;color:${C.dim};margin-bottom:8px;">What happened on the call</div>

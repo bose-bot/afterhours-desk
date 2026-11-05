@@ -8,8 +8,16 @@ function speakable(e164) {
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
 }
 
+// Callers hear the recording notice up front: some states require every party's consent to record.
 export function firstMessage(client) {
-  return `Thanks for calling ${client.business}, this is the virtual assistant. I can book a visit or take a message for the team. How can I help?`;
+  return `Thanks for calling ${client.business}, this is the virtual assistant. Calls are recorded so the team gets your details. I can book a visit or take a message for the team. How can I help?`;
+}
+
+// The number urgent calls are transferred to, if the shop gave one. Demo lines never transfer.
+export function transferNumber(client) {
+  if (client.status === 'demo') return '';
+  const n = client.details?.oncall || '';
+  return /^\+\d{8,15}$/.test(n) ? n : '';
 }
 
 export function buildSystemPrompt(client) {
@@ -17,7 +25,7 @@ export function buildSystemPrompt(client) {
   const hours = or(d.hours, describeSchedule(d.schedule));
   const area = or(d.area, 'the local area (confirm with the caller and take a message if unsure)');
   const office = d.office ? speakable(d.office) : '';
-  const oncall = d.oncall ? speakable(d.oncall) : '';
+  const canTransfer = Boolean(transferNumber(client));
 
   return `You are the phone receptionist for ${client.business}, a heating and air conditioning company serving ${area}. You answer calls when the team is busy or after hours.
 
@@ -34,10 +42,16 @@ HOW YOU SPEAK
 - Repeat back the caller's name, phone number, address and appointment time to confirm them.
 
 SAFETY FIRST, BEFORE ANYTHING ELSE
-If the caller mentions a gas smell, carbon monoxide alarm, smoke, burning smell, sparking, or anyone feeling dizzy or sick, say: "Please leave the building right away and call 911 or your gas company from outside. Your safety comes first." Do not troubleshoot. Then call take_message with urgency "Emergency" so the team calls them back.
+If the caller mentions a gas smell, carbon monoxide alarm, smoke, burning smell, sparking, or anyone feeling dizzy or sick, say: "Please leave the building right away and call 911 or your gas company from outside. Your safety comes first." Do not troubleshoot. Then call take_message with urgency "Emergency" so the team has their details.${canTransfer ? ` Then call transferCall to connect them to the on-call technician.` : ''}
 
 URGENT BUT NOT DANGEROUS
-No heat in freezing weather, no AC in extreme heat with elderly people, infants or medical needs, or water leaking from the unit: treat as Priority. Offer the earliest open slot${oncall ? `, or offer to have the on-call technician call back right away (call take_message with urgency "Priority")` : ''}.${d.afterfee ? ` Mention the after-hours fee: ${d.afterfee}.` : ''}
+No heat in freezing weather, no AC in extreme heat with elderly people, infants or medical needs, or water leaking from the unit: treat as Priority. ${canTransfer
+    ? 'Offer two choices: "I can connect you to our on-call technician right now, or book the earliest open visit. Which would you prefer?" If they want the technician, call take_message with urgency "Priority" first, then call transferCall.'
+    : 'Offer the earliest open slot, or take a message with urgency "Priority" so the team calls back first thing.'}${d.afterfee ? ` Mention the after-hours fee: ${d.afterfee}.` : ''}
+${canTransfer ? `
+TRANSFERRING TO A PERSON
+Only transfer for emergencies and Priority calls, as described above. Always call take_message before transferCall, so the team has the caller's details even if nobody picks up. transferCall tells the caller they are being connected, so don't announce it twice. Never give out the on-call number.
+` : ''}
 
 BOOKING
 Collect, one at a time: full name; best callback number (read it back digit by digit); service address with city or ZIP, and confirm it is in the service area; what is going on (furnace, heat pump, central AC, boiler or thermostat, age of unit, what they notice).
@@ -76,7 +90,7 @@ Gas smell:
 Caller: I smell gas near my furnace. What should I check?
 You: Please leave the building right away and call 911 or your gas company from outside. Your safety comes first.
 You: Once you're safe, I'll have the team call you back. What number should they use?
-(You call take_message with urgency "Emergency".)
+(You call take_message with urgency "Emergency".)${canTransfer ? '\n(Then you call transferCall.)' : ''}
 
 Asked if you're a person:
 Caller: Wait, am I talking to a real person?
@@ -104,10 +118,11 @@ ${String(d.websiteInfo).replace(/END WEBSITE TEXT/g, '')}
 END WEBSITE TEXT` : ''}`;
 }
 
-// The three tools the assistant can use. Their server URL points back at this app.
-export function toolDefinitions(webhookUrl) {
+// The tools the assistant can use. The three functions call back to this app; the optional
+// transfer is handled by Vapi itself, so it keeps working even if this server is slow.
+export function toolDefinitions(webhookUrl, { transferTo = '' } = {}) {
   const server = { url: webhookUrl };
-  return [
+  const tools = [
     {
       type: 'function',
       server,
@@ -156,4 +171,16 @@ export function toolDefinitions(webhookUrl) {
       },
     },
   ];
+  if (transferTo) {
+    tools.push({
+      type: 'transferCall',
+      destinations: [{
+        type: 'number',
+        number: transferTo,
+        message: "I'm connecting you to our on-call technician now. Please stay on the line.",
+        description: 'The on-call technician. Only for emergencies and urgent no-heat or no-cool calls.',
+      }],
+    });
+  }
+  return tools;
 }
