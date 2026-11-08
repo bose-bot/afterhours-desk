@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { openSlots } from './scheduling.js';
 import { callSummaryEmail } from './emails.js';
 import { callDuration, checkUsageAlerts } from './usage.js';
+import { syncBooking } from './integrations/sync.js';
 
 const URGENCIES = ['Emergency', 'Priority', 'Routine'];
 const clip = (v, n = 300) => (v == null ? '' : String(v)).trim().slice(0, n);
@@ -34,7 +35,8 @@ export function extractToolCalls(message) {
   return [];
 }
 
-async function runTool(call, client, { db, now }) {
+async function runTool(call, client, deps) {
+  const { db, now } = deps;
   const schedule = client.details.schedule;
 
   if (call.name === 'check_availability') {
@@ -54,6 +56,9 @@ async function runTool(call, client, { db, now }) {
       urgency: URGENCIES.includes(a.urgency) ? a.urgency : 'Routine', callId: call.callId,
     });
     if (!saved) return { booked: false, reason: 'Someone just took that window. Call check_availability and offer new times.' };
+    // Copy it into Jobber or Housecall Pro after answering, so the caller never waits on another company's API.
+    const later = deps.runInBackground || ((fn) => { fn().catch(() => {}); });
+    later(() => syncBooking(deps, client, saved.id));
     return { booked: true, window: slot.label };
   }
 
@@ -71,6 +76,8 @@ async function runTool(call, client, { db, now }) {
 
 export function createWebhookHandler(deps) {
   const { db, mailer, config, logger = console, now = () => new Date() } = deps;
+  // Reads through to deps, so values set on it later (like a test's fake APIs) are still seen.
+  const toolDeps = Object.assign(Object.create(deps), { now });
   return async function vapiWebhook(req, res) {
     if (!isAuthorized(req, config.webhookSecret)) return res.status(401).json({ error: 'unauthorized' });
 
@@ -84,7 +91,7 @@ export function createWebhookHandler(deps) {
         if (!c.id) return null;
         if (!client) return { toolCallId: c.id, result: JSON.stringify({ error: 'This line is not set up. Take a message.' }) };
         try {
-          return { toolCallId: c.id, result: JSON.stringify(await runTool({ ...c, callId }, client, { db, now })) };
+          return { toolCallId: c.id, result: JSON.stringify(await runTool({ ...c, callId }, client, toolDeps)) };
         } catch (e) {
           logger.error(`[webhook] tool ${c.name} failed: ${e.message}`);
           return { toolCallId: c.id, result: JSON.stringify({ error: 'Something went wrong. Take a message instead.' }) };

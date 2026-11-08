@@ -242,7 +242,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     selected = id;
     const box = $('#detail');
     try {
-      const { client: c, usage, ownerUrl, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
+      const { client: c, usage, ownerUrl, integration, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
       box.textContent = '';
       const d = c.details || {};
       box.append(
@@ -255,6 +255,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
           el('dt', { text: 'This month' }), el('dd', {}, usageCell(usage)),
           el('dt', { text: 'Vapi assistant' }), el('dd', { class: 'mono', text: c.vapiAssistantId || '—' }),
+          el('dt', { text: 'Scheduling tool' }), el('dd', { text: integration ? `${integration.name}${integration.account ? ` · ${integration.account}` : ''}` : 'Not connected (the owner connects it from their dashboard)' }),
           ...(ownerUrl ? [el('dt', { text: 'Owner dashboard' }), el('dd', {}, ownerLinkTools(c, ownerUrl))] : [])),
         el('h3', { text: `Bookings and messages (${bookings.length})` }),
         bookings.length ? el('div', { class: 'tablebox' }, el('table', {},

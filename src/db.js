@@ -41,6 +41,14 @@ const SCHEMA = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS integrations (
+    client_id TEXT PRIMARY KEY REFERENCES clients(id),
+    provider TEXT NOT NULL,            -- jobber | housecall
+    secret TEXT NOT NULL,              -- encrypted tokens or API key
+    account_name TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS calls (
     id TEXT PRIMARY KEY,
     client_id TEXT REFERENCES clients(id),
@@ -59,6 +67,9 @@ const MIGRATIONS = [
   'ALTER TABLE calls ADD COLUMN cost REAL',
   'ALTER TABLE calls ADD COLUMN source TEXT',
   'ALTER TABLE bookings ADD COLUMN done_at TEXT',     // when the owner marked a booking or callback as done
+  'ALTER TABLE bookings ADD COLUMN sync_status TEXT', // synced | failed, for shops with Jobber or Housecall Pro connected
+  'ALTER TABLE bookings ADD COLUMN sync_ref TEXT',    // the request or job id in that tool
+  'ALTER TABLE bookings ADD COLUMN sync_error TEXT',
 ];
 
 // ---- Drivers: all(sql, params) -> rows, run(sql, params), close(). SQL uses ? placeholders. ----
@@ -186,6 +197,30 @@ export async function openDb(target) {
 
     async listBookings(clientId) {
       return d.all('SELECT * FROM bookings WHERE client_id = ? ORDER BY created_at DESC', [clientId]);
+    },
+
+    async getBooking(clientId, id) {
+      return (await one('SELECT * FROM bookings WHERE id = ? AND client_id = ?', [id, clientId])) ?? null;
+    },
+
+    async setBookingSync(id, { status, ref, error }) {
+      await d.run('UPDATE bookings SET sync_status = ?, sync_ref = ?, sync_error = ? WHERE id = ?', [status, ref ?? null, error ?? null, id]);
+    },
+
+    async getIntegration(clientId) {
+      return (await one('SELECT * FROM integrations WHERE client_id = ?', [clientId])) ?? null;
+    },
+
+    async saveIntegration({ clientId, provider, secret, accountName }) {
+      const t = now();
+      await d.run(`INSERT INTO integrations (client_id, provider, secret, account_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (client_id) DO UPDATE SET provider = excluded.provider, secret = excluded.secret,
+                     account_name = excluded.account_name, updated_at = excluded.updated_at`,
+        [clientId, provider, secret, accountName ?? null, t, t]);
+    },
+
+    async deleteIntegration(clientId) {
+      await d.run('DELETE FROM integrations WHERE client_id = ?', [clientId]);
     },
 
     // Marks a booking or callback done (or not). Scoped to the client, so one shop can't touch another's.

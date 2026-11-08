@@ -91,7 +91,7 @@ export async function startApp({ env = {}, vapi = fakeVapi(), now, fetchImpl, lo
   }
 
   return {
-    app, db, vapi, mailer, config, req,
+    app, db, vapi, mailer, config, req, base,
     idle: () => app.locals.idle(),
     close: async () => { await new Promise((r) => server.close(r)); await db.close(); await drop(); },
   };

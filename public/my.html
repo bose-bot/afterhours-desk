@@ -69,6 +69,15 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
 .toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .toast{width:max-content;max-width:min(420px,calc(100% - 32px))}
 .toast button{flex:none;appearance:none;border:0;background:var(--bg);color:var(--fg);font:inherit;font-weight:700;border-radius:999px;padding:6px 14px;cursor:pointer}
+.tool{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.tool .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tool input{flex:1 1 220px;min-width:0;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;padding:8px 12px}
+.tool input:focus-visible{outline:3px solid var(--cool);outline-offset:1px}
+.tool .ok{color:var(--ok);font-weight:700}
+.tool .note{font-size:13.5px;color:var(--muted)}
+.sync{grid-column:1/-1;font-size:13.5px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sync.synced{color:var(--ok)}.sync.failed{color:var(--crit)}
+.sync button{appearance:none;border:0;background:none;color:var(--cool);font:inherit;font-weight:700;cursor:pointer;padding:4px 0;text-decoration:underline}
 .err{background:var(--surface);border:1px solid var(--crit);border-radius:16px;padding:20px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -99,6 +108,11 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     <section style="margin-top:28px">
       <h2>Upcoming visits <span class="count" id="vCount"></span></h2>
       <div class="list" id="visits"></div>
+    </section>
+
+    <section style="margin-top:28px" id="toolSection">
+      <h2>Your scheduling tool</h2>
+      <div class="tool" id="tool"></div>
     </section>
 
     <section style="margin-top:28px">
@@ -193,9 +207,57 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
         b.address ? el('div', { class: 'meta', text: b.address }) : null),
       el('div', { class: 'meta', style: 'text-align:right;font-variant-numeric:tabular-nums', text: pretty(b.caller_phone) }),
       el('p', { class: 'issue', text: b.issue || '' }),
+      isVisit && !done ? syncLine(b) : null,
       el('div', { class: 'actions' },
         b.caller_phone && !done ? el('a', { class: 'btn call', href: `tel:${b.caller_phone}`, text: `Call ${b.caller_name ? b.caller_name.split(' ')[0] : 'back'}` }) : null,
         el('button', { class: 'btn ghost', type: 'button', text: done ? 'Move back' : (isVisit ? 'Mark confirmed' : 'Mark done'), onclick: () => setDone(b, !done) })));
+  }
+
+  // Where this booking stands in Jobber or Housecall Pro, with a Retry when it didn't get there.
+  function syncLine(b) {
+    const tool = data.integration?.connected;
+    if (!tool) return null;
+    if (b.sync_status === 'synced') return el('div', { class: 'sync synced', text: `In ${tool.name}` });
+    if (b.sync_status === 'failed') return el('div', { class: 'sync failed' }, document.createTextNode(`Didn't reach ${tool.name}: ${b.sync_error || 'unknown error'}`),
+      el('button', { type: 'button', text: 'Retry', onclick: (ev) => retrySync(ev, b) }));
+    return el('div', { class: 'sync' }, document.createTextNode(`Not sent to ${tool.name} yet`), el('button', { type: 'button', text: 'Send now', onclick: (ev) => retrySync(ev, b) }));
+  }
+  async function retrySync(ev, b) {
+    ev.currentTarget.disabled = true; ev.currentTarget.textContent = 'Sending…';
+    try {
+      const r = await api('POST', `/api/owner/${encodeURIComponent(id)}/items/${encodeURIComponent(b.id)}/sync`);
+      b.sync_status = r.status; b.sync_error = r.error || null;
+      toast(r.status === 'synced' ? `Sent to ${data.integration.connected.name}` : `Still didn't go through: ${r.error}`);
+    } catch (e) { toast(e.message); }
+    render();
+  }
+
+  function renderTool() {
+    const box = $('#tool'), integ = data.integration || {};
+    const c = integ.connected;
+    if (c) {
+      box.replaceChildren(
+        el('p', {}, el('span', { class: 'ok', text: `Connected to ${c.name}` }), document.createTextNode(c.account ? ` · ${c.account}` : '')),
+        el('p', { class: 'note', text: `Every visit your receptionist books is added to ${c.name} automatically${c.provider === 'jobber' ? ' as a new request with the time the caller picked' : ' as a scheduled job'}. Callbacks stay here and in your email.` }),
+        el('div', { class: 'row' }, el('button', { class: 'btn ghost', type: 'button', text: 'Disconnect', onclick: disconnect })));
+      return;
+    }
+    const kids = [el('p', { class: 'note', text: 'Connect the app you schedule jobs in, and every visit your receptionist books shows up there too. No more typing them in.' })];
+    if (integ.jobberAvailable) kids.push(el('div', { class: 'row' }, el('a', { class: 'btn call', href: `/api/owner/${encodeURIComponent(id)}/integrations/jobber/start?key=${encodeURIComponent(key)}`, text: 'Connect Jobber' })));
+    const input = el('input', { id: 'hcpKey', type: 'password', autocomplete: 'off', placeholder: 'Housecall Pro API key', 'aria-label': 'Housecall Pro API key' });
+    const btn = el('button', { class: 'btn ghost', type: 'button', text: 'Connect Housecall Pro' });
+    const msg = el('p', { class: 'note', text: 'Housecall Pro: create an API key in your Housecall Pro account settings and paste it here. API access comes with their MAX plan.' });
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Checking…';
+      try { const r = await api('POST', `/api/owner/${encodeURIComponent(id)}/integrations/housecall`, { apiKey: input.value }); data.integration = r.integration; toast('Connected to Housecall Pro'); render(); }
+      catch (e) { msg.textContent = e.message; msg.style.color = 'var(--crit)'; btn.disabled = false; btn.textContent = 'Connect Housecall Pro'; }
+    });
+    kids.push(el('div', { class: 'row' }, input, btn), msg);
+    box.replaceChildren(...kids);
+  }
+  async function disconnect() {
+    try { const r = await api('DELETE', `/api/owner/${encodeURIComponent(id)}/integrations`); data.integration = r.integration; toast('Disconnected'); render(); }
+    catch (e) { toast(e.message); }
   }
 
   function render() {
@@ -237,6 +299,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     $('#doneBox').hidden = !done.length;
     $('#done').replaceChildren(...done.map((b) => itemCard(b, { done: true })));
 
+    renderTool();
     $('#foot').textContent = `Updated ${new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date())}. Refreshes every minute. Bookmark this page to come back.`;
   }
 
@@ -244,7 +307,14 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     $('#shop').textContent = 'Link not recognized'; $('#sub').textContent = '';
     $('#error').textContent = 'This dashboard link is incomplete. Open the "Open your dashboard" button in your latest email from AfterHours Desk.';
     $('#error').hidden = false;
-  } else load();
+  } else {
+    // Coming back from Jobber's sign-in page.
+    const q = new URLSearchParams(location.search);
+    if (q.get('connected') === 'jobber') setTimeout(() => toast('Connected to Jobber'), 300);
+    if (q.get('connect_error')) setTimeout(() => toast(`Couldn't connect: ${q.get('connect_error')}`), 300);
+    if (q.has('connected') || q.has('connect_error')) history.replaceState(null, '', `${location.pathname}?key=${encodeURIComponent(key)}`);
+    load();
+  }
   document.addEventListener('visibilitychange', () => { if (!document.hidden && data) load(); });
 })();
 </script>

@@ -22,6 +22,7 @@ Sign-up form ──► Vapi assistant created ──► local phone number assig
 - **Honest.** The greeting says it's the virtual assistant and that calls are recorded. It never claims to be human, never quotes prices the shop didn't list, and never takes payment details.
 - **Call summaries.** After every call the shop gets the bookings, messages and Vapi's summary by email.
 - **Owner dashboard.** Each shop gets a private link (in every email, and copyable from the admin page) to a phone-friendly page with callbacks waiting (urgent first), upcoming visits, recent calls with summaries and transcripts, and minutes used. Owners tap Call or Mark done; done items can be moved back.
+- **Books into Jobber or Housecall Pro.** From their dashboard, owners connect Jobber (sign in) or Housecall Pro (paste an API key). Every visit the receptionist books is copied in: in Jobber as a client, property and request titled with the caller's chosen window; in Housecall Pro as a customer and a scheduled job. Repeat callers are matched by phone. Tokens and keys are encrypted in the database. If a sync fails, the booking still stands, the owner still gets the email, and the dashboard shows the reason with a Retry button.
 - **Morning report.** At 7 AM in each shop's time zone, the owner gets one email covering everything since the last report: who to call back, what's booked, how many calls. A quiet night sends nothing.
 - **No lost reports.** If the server was asleep or restarting when a call ended, it fetches the missed reports from Vapi every 10 minutes and still emails the shop, once.
 - **Minutes and costs.** Every call's length and Vapi cost are stored. The admin page shows each shop's minutes this month against its plan, and you get an email when a shop reaches 80% and 100% of its included minutes. Calls keep being answered past the limit.
@@ -37,7 +38,7 @@ git clone https://github.com/<you>/afterhours-desk.git
 cd afterhours-desk
 npm install
 cp .env.example .env      # then fill in the required values
-npm test                  # 69 tests, uses a fake Vapi, no account needed
+npm test                  # 75 tests, uses a fake Vapi, no account needed
 npm start
 ```
 
@@ -90,6 +91,7 @@ Click the button, paste the same keys on the setup screen, and deploy. It create
 | `VAPI_MODEL`, `VAPI_VOICE_*` | Pick the model and voice. Empty voice uses Vapi's default. |
 | `OPERATOR_EMAIL` | Where new-client, failure and minute alerts go. |
 | `INCLUDED_MINUTES` | Call minutes in a plan each month (default 300, as on the website). Alerts at 80% and 100%. `0` turns them off. |
+| `JOBBER_CLIENT_ID`, `JOBBER_CLIENT_SECRET` | From your app at developer.getjobber.com. Without them the Connect Jobber button is hidden. |
 | `MORNING_REPORT_HOUR` | Local hour for the overnight email (default 7). `off` turns it off. |
 | `RECOVER_EVERY_MINUTES` | How often to fetch call reports that never reached the server (default 10). `0` turns it off. |
 
@@ -134,6 +136,8 @@ Webhook security: each assistant's server URL carries a per-deployment secret to
 - **Move off free hosting.** A free server goes to sleep when idle. The keep-awake ping and the report recovery soften that, but a paid plan (about $7 a month on Render) keeps tool calls fast during live calls.
 - **Watch the health check.** `/healthz` fails when the database can't be reached. Point a free uptime monitor (UptimeRobot, Better Stack, or cron-job.org's failure alerts) at it so you hear about an outage before a shop does.
 - **Test the transfer once on your real number.** Call the shop's AI number, say you smell gas, and check the on-call phone rings. Free Vapi numbers can't place outbound calls; if the transfer doesn't go through, import a Twilio number for that shop.
+- **Set up Jobber once, for all your shops.** Create a free developer account at developer.getjobber.com, create an app, set its callback URL to `https://<your server>/api/integrations/jobber/callback`, and give it read and write access to clients, properties and requests, plus read access to the account. Put its client ID and secret in `JOBBER_CLIENT_ID` and `JOBBER_CLIENT_SECRET`. Then connect a test Jobber account from a dashboard and book a call before telling shops about it.
+- **Check the Housecall Pro sync with a real account.** It follows Housecall Pro's public API (customers, addresses, jobs with a schedule, job notes), which needs their MAX plan. The tests use a fake of that API, so book one real test visit first and confirm the job lands where you expect.
 - **Call recording and AI disclosure laws** differ by state. The greeting tells callers the call is recorded, which covers states that need every party's consent. Check the rules where your clients and their callers are.
 - **Bookings are requests.** They're stored here and emailed to the shop; they don't write into ServiceTitan, Housecall Pro or Google Calendar yet. That's the most useful next contribution.
 - **Free Vapi numbers are inbound-only.**
@@ -144,6 +148,7 @@ Webhook security: each assistant's server URL carries a per-deployment secret to
 - Calendar sync (Google Calendar, then field-service tools)
 - SMS summaries
 - Stripe billing with automatic pause on failed payment, using the minute counts already stored
+- Read the shop's Jobber or Housecall Pro calendar before offering windows, so the receptionist never offers a time the team already filled
 - Admin dashboard page
 - Other trades: plumbing, electrical, roofing
 

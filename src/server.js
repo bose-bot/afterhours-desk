@@ -10,6 +10,8 @@ import { usageThisMonth } from './usage.js';
 import { recoverCalls } from './recover.js';
 import { ownerKeyValid, ownerUrl } from './owner.js';
 import { sendReport } from './report.js';
+import { PROVIDERS, loadIntegration, saveIntegration, syncBooking, testConnection, jobber } from './integrations/sync.js';
+import { signState, readState } from './integrations/vault.js';
 import { timingSafeEqual } from 'node:crypto';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -56,6 +58,7 @@ export function createApp(deps) {
     jobs.add(p);
   };
   app.locals.idle = () => Promise.all([...jobs]);
+  app.locals.deps = deps; // tests swap in fake outside APIs here
 
   const allowSignup = rateLimiter(config.signupsPerIpPerHour);
 
@@ -107,7 +110,7 @@ export function createApp(deps) {
   }));
 
   // ---- Vapi webhook ----
-  app.post('/api/vapi/webhook', wrap(createWebhookHandler(deps)));
+  app.post('/api/vapi/webhook', wrap(createWebhookHandler(Object.assign(Object.create(deps), { runInBackground }))));
 
   // ---- Admin (Bearer ADMIN_TOKEN) ----
   const admin = express.Router();
@@ -147,7 +150,10 @@ export function createApp(deps) {
   admin.get('/clients/:id', wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'not found' });
-    res.json({ client: c, usage: await usageOf(c), ownerUrl: c.status === 'demo' ? '' : ownerUrl(config, c), bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
+    const integ = await db.getIntegration(c.id);
+    res.json({ client: c, usage: await usageOf(c), ownerUrl: c.status === 'demo' ? '' : ownerUrl(config, c),
+      integration: integ ? { name: PROVIDERS[integ.provider], account: integ.account_name } : null,
+      bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
   }));
   const startSetup = (allowed) => wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);
@@ -195,9 +201,62 @@ export function createApp(deps) {
     res.json({
       shop: { business: c.business, contact: c.contact, phoneNumber: c.phoneNumber, status: c.status, timezone: c.details?.schedule?.timezone || config.timezone },
       usage: await usageOf(c),
-      items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at })),
+      items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error })),
       calls,
+      integration: await integrationView(c.id),
     });
+  }));
+
+  // ---- Jobber / Housecall Pro: the owner connects their scheduling tool; new bookings are copied into it.
+  async function integrationView(clientId) {
+    const row = await db.getIntegration(clientId);
+    return {
+      connected: row ? { provider: row.provider, name: PROVIDERS[row.provider], account: row.account_name, since: row.created_at } : null,
+      jobberAvailable: Boolean(config.jobber.clientId && config.jobber.clientSecret),
+    };
+  }
+  const backToDashboard = (clientId, extra) => {
+    const url = ownerUrl(config, { id: clientId });
+    return url ? `${url}&${new URLSearchParams(extra)}` : '/';
+  };
+
+  app.get('/api/owner/:id/integrations/jobber/start', ownerGate, (req, res) => {
+    if (!config.jobber.clientId || !config.jobber.clientSecret) return res.status(501).json({ error: 'Jobber connections are not set up on this server yet.' });
+    res.redirect(jobber.authorizeUrl(config, signState(config, req.client.id)));
+  });
+  app.get('/api/integrations/jobber/callback', async (req, res) => {
+    const st = readState(config, req.query.state);
+    if (!st) return res.status(400).send('This Jobber sign-in link expired. Go back to your dashboard and press Connect Jobber again.');
+    if (req.query.error || !req.query.code) return res.redirect(backToDashboard(st.clientId, { connect_error: 'Jobber access was not granted.' }));
+    try {
+      const fetchImpl = deps.syncFetch || globalThis.fetch;
+      const tokens = await jobber.exchangeCode(config, String(req.query.code), fetchImpl);
+      const account = await testConnection(deps, 'jobber', tokens);
+      await saveIntegration(deps, st.clientId, 'jobber', tokens, account);
+      res.redirect(backToDashboard(st.clientId, { connected: 'jobber' }));
+    } catch (e) {
+      logger.error(`[jobber] connect failed: ${e.message}`);
+      res.redirect(backToDashboard(st.clientId, { connect_error: e.message.slice(0, 200) }));
+    }
+  });
+  app.post('/api/owner/:id/integrations/housecall', ownerGate, wrap(async (req, res) => {
+    const apiKey = String(req.body?.apiKey || '').trim();
+    if (apiKey.length < 10 || apiKey.length > 300) return res.status(400).json({ error: 'Paste the full API key from Housecall Pro.' });
+    let account;
+    try { account = await testConnection(deps, 'housecall', { apiKey }); }
+    catch (e) { return res.status(400).json({ error: e.message }); }
+    await saveIntegration(deps, req.client.id, 'housecall', { apiKey }, account);
+    res.json({ ok: true, integration: await integrationView(req.client.id) });
+  }));
+  app.delete('/api/owner/:id/integrations', ownerGate, wrap(async (req, res) => {
+    await db.deleteIntegration(req.client.id);
+    res.json({ ok: true, integration: await integrationView(req.client.id) });
+  }));
+  app.post('/api/owner/:id/items/:itemId/sync', ownerGate, wrap(async (req, res) => {
+    if (!(await loadIntegration(deps, req.client.id))) return res.status(409).json({ error: 'Connect Jobber or Housecall Pro first.' });
+    const b = await db.getBooking(req.client.id, req.params.itemId);
+    if (!b || b.kind !== 'booking') return res.status(404).json({ error: 'That booking was not found.' });
+    res.json(await syncBooking(deps, req.client, b.id));
   }));
   app.post('/api/owner/:id/items/:itemId', ownerGate, wrap(async (req, res) => {
     const ok = await db.setBookingDone(req.client.id, req.params.itemId, req.body?.done !== false);
