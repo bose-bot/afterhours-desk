@@ -67,6 +67,7 @@ const MIGRATIONS = [
   'ALTER TABLE calls ADD COLUMN cost REAL',
   'ALTER TABLE calls ADD COLUMN source TEXT',
   'ALTER TABLE bookings ADD COLUMN done_at TEXT',     // when the owner marked a booking or callback as done
+  'ALTER TABLE calls ADD COLUMN started_at TEXT',     // when the call began, for the busiest-moment count
   'ALTER TABLE bookings ADD COLUMN sync_status TEXT', // synced | failed, for shops with Jobber or Housecall Pro connected
   'ALTER TABLE bookings ADD COLUMN sync_ref TEXT',    // the request or job id in that tool
   'ALTER TABLE bookings ADD COLUMN sync_error TEXT',
@@ -229,14 +230,14 @@ export async function openDb(target) {
       return (r?.changes ?? r?.rowCount ?? 0) > 0;
     },
 
-    async saveCall({ id, clientId, callerPhone, summary, transcript, endedReason, durationS, cost, source, createdAt }) {
-      await d.run(`INSERT INTO calls (id, client_id, caller_phone, summary, transcript, ended_reason, duration_s, cost, source, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    async saveCall({ id, clientId, callerPhone, summary, transcript, endedReason, durationS, cost, source, createdAt, startedAt }) {
+      await d.run(`INSERT INTO calls (id, client_id, caller_phone, summary, transcript, ended_reason, duration_s, cost, source, created_at, started_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT (id) DO UPDATE SET client_id = excluded.client_id, caller_phone = excluded.caller_phone,
                      summary = excluded.summary, transcript = excluded.transcript, ended_reason = excluded.ended_reason,
                      duration_s = excluded.duration_s, cost = excluded.cost`,
         [id, clientId ?? null, callerPhone ?? null, summary ?? null, transcript ?? null, endedReason ?? null,
-         Number.isFinite(durationS) ? Math.round(durationS) : null, Number.isFinite(cost) ? cost : null, source ?? 'webhook', createdAt ?? now()]);
+         Number.isFinite(durationS) ? Math.round(durationS) : null, Number.isFinite(cost) ? cost : null, source ?? 'webhook', createdAt ?? now(), startedAt ?? null]);
     },
 
     async getCall(id) {
@@ -250,6 +251,11 @@ export async function openDb(target) {
     // Calls since an ISO time, for usage totals.
     async callsSince(clientId, sinceIso) {
       return d.all('SELECT duration_s, cost, created_at FROM calls WHERE client_id = ? AND created_at >= ?', [clientId, sinceIso]);
+    },
+
+    // Every call that started since a moment, across all shops: the account's lines are shared.
+    async callsStartedSince(sinceIso) {
+      return d.all('SELECT started_at, duration_s FROM calls WHERE started_at >= ?', [sinceIso]);
     },
 
     async ping() {

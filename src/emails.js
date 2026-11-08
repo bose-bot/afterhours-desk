@@ -4,10 +4,8 @@ import { ownerUrl } from './owner.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export function prettyPhone(e164) {
-  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164 || '');
-  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (e164 || '');
-}
+export { prettyPhone } from './phone.js';
+import { prettyPhone } from './phone.js';
 
 // Same palette as the website: night blue, furnace orange, cold-air blue.
 const C = { night: '#0D1621', panel: '#132131', line: '#263B51', ink: '#E9EFF3', dim: '#9AABB9', heat: '#FF8A3D', cool: '#5CC8FF', crit: '#FF9488', ok: '#74E0A9' };

@@ -1,3 +1,6 @@
+import { prettyPhone } from './phone.js';
+import { createTwilio } from './twilio.js';
+import { countryOf } from './countries.js';
 // Turns a sign-up into a live receptionist: Vapi assistant -> phone number -> welcome email.
 import { buildSystemPrompt, firstMessage, toolDefinitions, transferNumber } from './prompt.js';
 import { welcomeEmail } from './emails.js';
@@ -22,7 +25,11 @@ export function assistantBody(config, client) {
     serverMessages: ['end-of-call-report'],
     metadata: { clientId: client.id },
   };
-  if (config.vapi.voiceProvider && config.vapi.voiceId) {
+  if (countryOf(client).code === 'IN') {
+    // Hindi-English speech recognition, and an Indian voice when one is set.
+    body.transcriber = { ...config.india.transcriber };
+    if (config.india.voiceProvider && config.india.voiceId) body.voice = { provider: config.india.voiceProvider, voiceId: config.india.voiceId };
+  } else if (config.vapi.voiceProvider && config.vapi.voiceId) {
     body.voice = { provider: config.vapi.voiceProvider, voiceId: config.vapi.voiceId };
   }
   return body;
@@ -37,10 +44,7 @@ export function fallbackDestination(client) {
   return number ? { type: 'number', number, message: 'Connecting you to the team now.' } : null;
 }
 
-function pretty(e164) {
-  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164 || '');
-  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : e164;
-}
+const pretty = prettyPhone;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -55,10 +59,37 @@ export function suggestedAreaCodes(message) {
  * Asks for a number in the shop's area code. If Vapi has none there, tries the area codes
  * Vapi suggests, then the operator's default, then any available number.
  */
-async function createNumberWithFallback(vapi, client, config, logger) {
+async function createNumberWithFallback(vapi, client, config, logger, deps = {}) {
   const base = { provider: 'vapi', assistantId: client.vapiAssistantId, name: client.business.slice(0, 40) };
   const fallback = fallbackDestination(client);
   if (fallback) base.fallbackDestination = fallback;
+  const twilioReady = Boolean(config.twilio?.accountSid && config.twilio?.authToken);
+  if (twilioReady && config.twilio.always) return twilioNumber(vapi, client, config, base, deps);
+  try {
+    return await vapiFreeNumber(vapi, client, config, logger, base);
+  } catch (e) {
+    // Out of free numbers (Vapi allows 10), or none left near the shop: buy one on Twilio instead.
+    if (!twilioReady) throw e;
+    logger.warn(`[provision] Vapi number failed for ${client.business} (${e.message}); buying one on Twilio`);
+    return twilioNumber(vapi, client, config, base, deps);
+  }
+}
+
+async function twilioNumber(vapi, client, config, base, deps) {
+  const tw = createTwilio({ ...config.twilio, fetchImpl: deps.syncFetch || globalThis.fetch });
+  const bought = await tw.buyUsNumber({ areaCode: client.details.areaCode, friendlyName: client.business });
+  try {
+    const p = await vapi.createPhoneNumber({ ...base, provider: 'twilio', number: bought.number,
+      twilioAccountSid: config.twilio.accountSid, twilioAuthToken: config.twilio.authToken });
+    return { ...p, number: p.number || bought.number, twilioSid: bought.sid };
+  } catch (e) {
+    // Don't keep paying for a number Vapi couldn't take.
+    await tw.release(bought.sid).catch(() => {});
+    throw e;
+  }
+}
+
+async function vapiFreeNumber(vapi, client, config, logger, base) {
   const tried = new Set();
   const queue = [client.details.areaCode, config.vapi.defaultAreaCode].filter(Boolean);
   let lastErr;
@@ -104,10 +135,22 @@ export async function provisionClient(clientId, deps) {
       createdAssistantNow = true;
     }
 
+    // India: numbers come from a licensed Indian provider, so the operator attaches one by hand.
+    if (!client.vapiPhoneId && countryOf(client).code === 'IN') {
+      client = await db.updateClient(clientId, { status: 'needs_number' });
+      await safeSend(mailer, logger, {
+        to: config.mail.operatorEmail,
+        subject: `Attach an Indian number: ${client.business}`,
+        text: `${client.business} (${client.email}) is set up and waiting for a +91 number.\n\nGet a number from your Indian provider, then on the admin page open the shop and use "Attach Indian number".`,
+      });
+      return client;
+    }
+
     if (!client.vapiPhoneId) {
-      const p = await createNumberWithFallback(vapi, client, config, logger);
+      const p = await createNumberWithFallback(vapi, client, config, logger, deps);
       if (!p?.id) throw new Error('Vapi did not return a phone number id.');
-      client = await db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: p.number || null });
+      client = await db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: p.number || null,
+        ...(p.twilioSid ? { details: { ...client.details, twilioNumberSid: p.twilioSid } } : {}) });
     }
 
     // New numbers can take a moment to be assigned.
@@ -161,10 +204,34 @@ export async function refreshNumber(clientId, { db, vapi }) {
 export async function updateScript(clientId, { db, vapi, config }) {
   const client = await db.getClient(clientId);
   if (!client?.vapiAssistantId) return { client, updated: false };
-  const { name, firstMessage, model, server, serverMessages, voice } = assistantBody(config, client);
-  await vapi.updateAssistant(client.vapiAssistantId, { name, firstMessage, model, server, serverMessages, ...(voice ? { voice } : {}) });
+  const { name, firstMessage, model, server, serverMessages, voice, transcriber } = assistantBody(config, client);
+  await vapi.updateAssistant(client.vapiAssistantId, { name, firstMessage, model, server, serverMessages, ...(voice ? { voice } : {}), ...(transcriber ? { transcriber } : {}) });
   // Shops set up before the fallback existed get it now.
   const fallback = fallbackDestination(client);
   if (client.vapiPhoneId && fallback) await vapi.updatePhoneNumber(client.vapiPhoneId, { fallbackDestination: fallback });
   return { client, updated: true };
+}
+
+/**
+ * India: connects a +91 number from the shop's licensed provider (set up in Vapi as a SIP credential)
+ * to the shop's assistant, then sends the welcome email.
+ */
+export async function attachIndianNumber(clientId, number, deps) {
+  const { db, vapi, mailer, config, logger = console } = deps;
+  let client = await db.getClient(clientId);
+  if (!client) throw Object.assign(new Error('No client with that id.'), { status: 404 });
+  if (countryOf(client).code !== 'IN') throw Object.assign(new Error('Only Indian shops get a number this way.'), { status: 409 });
+  if (!config.india.sipCredentialId) throw Object.assign(new Error('Set VAPI_IN_SIP_CREDENTIAL_ID to your Indian provider\'s SIP credential in Vapi first.'), { status: 409 });
+  if (!/^\+91\d{10}$/.test(number || '')) throw Object.assign(new Error('Enter the number as +91 and 10 digits.'), { status: 400 });
+  if (!client.vapiAssistantId) throw Object.assign(new Error('Finish setup first: the shop has no assistant yet.'), { status: 409 });
+  if (client.vapiPhoneId) throw Object.assign(new Error('This shop already has a number.'), { status: 409 });
+  const body = { provider: 'byo-phone-number', number, credentialId: config.india.sipCredentialId, numberE164CheckEnabled: false,
+    assistantId: client.vapiAssistantId, name: client.business.slice(0, 40) };
+  const fallback = fallbackDestination(client);
+  if (fallback) body.fallbackDestination = fallback;
+  const p = await vapi.createPhoneNumber(body);
+  if (!p?.id) throw new Error('Vapi did not return a phone number id.');
+  client = await db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: number, status: 'active', error: null });
+  await safeSend(mailer, logger, welcomeEmail(config, client));
+  return client;
 }

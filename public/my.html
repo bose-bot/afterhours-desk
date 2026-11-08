@@ -110,6 +110,11 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       <div class="list" id="visits"></div>
     </section>
 
+    <section style="margin-top:28px" id="billingSection" hidden>
+      <h2>Your plan</h2>
+      <div class="tool" id="billing"></div>
+    </section>
+
     <section style="margin-top:28px" id="toolSection">
       <h2>Your scheduling tool</h2>
       <div class="tool" id="tool"></div>
@@ -135,7 +140,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
   const id = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
   const key = new URLSearchParams(location.search).get('key') || '';
   const RANK = { Emergency: 0, Priority: 1, Routine: 2 };
-  let data = null, tz = 'America/New_York', timer = null, lastUndo = null;
+  let data = null, tz = 'America/New_York', locale = 'en-US', timer = null, lastUndo = null;
 
   function el(tag, attrs = {}, ...kids) {
     const n = document.createElement(tag);
@@ -146,11 +151,11 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     for (const k of kids) if (k != null) n.append(k);
     return n;
   }
-  const pretty = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ''); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (p || ''); };
+  const pretty = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ''); if (m) return `(${m[1]}) ${m[2]}-${m[3]}`; const i = /^\+91(\d{5})(\d{5})$/.exec(p || ''); return i ? `+91 ${i[1]} ${i[2]}` : (p || ''); };
   const when = (iso) => {
     const d = new Date(iso); if (isNaN(d)) return '';
-    const day = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' }).format(d);
-    const t = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d);
+    const day = new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' }).format(d);
+    const t = new Intl.DateTimeFormat(locale, { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d);
     return `${day}, ${t}`;
   };
   const dur = (s) => s == null ? '' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -167,7 +172,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
   async function load() {
     try {
       data = await api('GET', `/api/owner/${encodeURIComponent(id)}`);
-      tz = data.shop.timezone || tz;
+      tz = data.shop.timezone || tz; locale = data.shop.locale || locale;
       render();
       $('#error').hidden = true; $('#app').hidden = false;
     } catch (e) {
@@ -230,6 +235,24 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       toast(r.status === 'synced' ? `Sent to ${data.integration.connected.name}` : `Still didn't go through: ${r.error}`);
     } catch (e) { toast(e.message); }
     render();
+  }
+
+  // Start or check the subscription: Stripe for US shops, Razorpay (rupees, GST invoice) for Indian shops.
+  function renderBilling() {
+    const b = data.billing || {}, box = $('#billing');
+    $('#billingSection').hidden = !b.provider && !b.status;
+    const label = { active: 'Active', trialing: 'Free trial', pending: 'Waiting for your first payment', past_due: 'Payment failed', unpaid: 'Payment failed', canceled: 'Cancelled', paused: 'Paused' }[b.status];
+    const kids = [el('p', {}, el('span', { class: b.status === 'active' || b.status === 'trialing' ? 'ok' : '', text: label || 'Not started' }))];
+    if (b.provider && !['active', 'trialing'].includes(b.status)) {
+      const btn = el('button', { class: 'btn call', type: 'button', text: b.status === 'past_due' || b.status === 'unpaid' ? 'Update payment' : 'Start subscription' });
+      btn.addEventListener('click', async () => {
+        btn.disabled = true; btn.textContent = 'Opening…';
+        try { const r = await api('POST', `/api/owner/${encodeURIComponent(id)}/billing/checkout`); location.href = r.url; }
+        catch (e) { toast(e.message); btn.disabled = false; btn.textContent = 'Start subscription'; }
+      });
+      kids.push(el('p', { class: 'note', text: b.provider === 'razorpay' ? 'Pay in rupees by UPI, card or netbanking through Razorpay. GST invoice included.' : 'Secure checkout by Stripe. Your free trial starts today.' }), el('div', { class: 'row' }, btn));
+    }
+    box.replaceChildren(...kids);
   }
 
   function renderTool() {
@@ -300,7 +323,8 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     $('#done').replaceChildren(...done.map((b) => itemCard(b, { done: true })));
 
     renderTool();
-    $('#foot').textContent = `Updated ${new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date())}. Refreshes every minute. Bookmark this page to come back.`;
+    renderBilling();
+    $('#foot').textContent = `Updated ${new Intl.DateTimeFormat(locale, { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date())}. Refreshes every minute. Bookmark this page to come back.`;
   }
 
   if (!id || !key) {
@@ -311,8 +335,9 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     // Coming back from Jobber's sign-in page.
     const q = new URLSearchParams(location.search);
     if (q.get('connected') === 'jobber') setTimeout(() => toast('Connected to Jobber'), 300);
+    if (q.get('billing') === 'done') setTimeout(() => toast('Thanks! Your subscription is set up.'), 300);
     if (q.get('connect_error')) setTimeout(() => toast(`Couldn't connect: ${q.get('connect_error')}`), 300);
-    if (q.has('connected') || q.has('connect_error')) history.replaceState(null, '', `${location.pathname}?key=${encodeURIComponent(key)}`);
+    if (q.has('connected') || q.has('connect_error') || q.has('billing')) history.replaceState(null, '', `${location.pathname}?key=${encodeURIComponent(key)}`);
     load();
   }
   document.addEventListener('visibilitychange', () => { if (!document.hidden && data) load(); });

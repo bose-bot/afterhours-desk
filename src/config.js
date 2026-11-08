@@ -30,12 +30,31 @@ export function loadConfig(env = process.env) {
       voiceProvider: env.VAPI_VOICE_PROVIDER || '',
       voiceId: env.VAPI_VOICE_ID || '',
       defaultAreaCode: env.DEFAULT_AREA_CODE || '',
+      // Calls the account can take at the same moment (Vapi's default is 10). Used for the busy-line alert.
+      concurrency: int(env.VAPI_CONCURRENCY, 10),
+    },
+
+    // Twilio, for US numbers once Vapi's 10 free numbers are used up. NUMBER_SOURCE=twilio uses it for every shop.
+    twilio: { accountSid: env.TWILIO_ACCOUNT_SID || '', authToken: env.TWILIO_AUTH_TOKEN || '', always: env.NUMBER_SOURCE === 'twilio' },
+
+    // India: numbers come from an Indian licensed provider over SIP, set up once in Vapi as a credential.
+    india: {
+      sipCredentialId: env.VAPI_IN_SIP_CREDENTIAL_ID || '',
+      voiceProvider: env.VAPI_IN_VOICE_PROVIDER || '',
+      voiceId: env.VAPI_IN_VOICE_ID || '',
+      // Hindi, English and a mix of both on one call.
+      transcriber: { provider: env.VAPI_IN_TRANSCRIBER_PROVIDER || 'deepgram', model: env.VAPI_IN_TRANSCRIBER_MODEL || 'nova-3', language: env.VAPI_IN_TRANSCRIBER_LANGUAGE || 'multi' },
     },
 
     // Shared secret Vapi must present on webhook calls.
     webhookSecret: env.WEBHOOK_SECRET || '',
     // Token for the /api/admin endpoints.
     adminToken: env.ADMIN_TOKEN || '',
+    // More people on the admin page: "Name:token,Name2:token2". Each token at least 24 characters.
+    supportTokens: String(env.SUPPORT_TOKENS || '').split(',').map((p) => p.trim()).filter(Boolean).map((p) => {
+      const i = p.indexOf(':');
+      return { name: p.slice(0, i).trim(), token: p.slice(i + 1).trim() };
+    }).filter((t) => t.name && t.token.length >= 24),
 
     // "auto": sign-ups go live with no human step. "approval" (default, safest for a fresh deploy):
     // they wait for /api/admin/clients/:id/approve. Switch to auto once you're ready.
@@ -51,6 +70,10 @@ export function loadConfig(env = process.env) {
     includedMinutes: int(env.INCLUDED_MINUTES, 300),
     // How often to fetch call reports from Vapi that never reached this server. 0 turns it off.
     recoverEveryMinutes: int(env.RECOVER_EVERY_MINUTES, 10),
+    // Billing. US shops pay through Stripe Checkout, Indian shops through a Razorpay subscription.
+    stripe: { secretKey: env.STRIPE_SECRET_KEY || '', priceId: env.STRIPE_PRICE_ID || '', webhookSecret: env.STRIPE_WEBHOOK_SECRET || '',
+      trialDays: int(env.STRIPE_TRIAL_DAYS, 14), automaticTax: bool(env.STRIPE_AUTOMATIC_TAX, false) },
+    razorpay: { keyId: env.RAZORPAY_KEY_ID || '', keySecret: env.RAZORPAY_KEY_SECRET || '', planId: env.RAZORPAY_PLAN_ID || '', webhookSecret: env.RAZORPAY_WEBHOOK_SECRET || '' },
     // Jobber app credentials from developer.getjobber.com. Without them the "Connect Jobber" button is hidden.
     jobber: { clientId: env.JOBBER_CLIENT_ID || '', clientSecret: env.JOBBER_CLIENT_SECRET || '' },
     // Local hour (0-11) in each shop's time zone to email the overnight report. "off" turns it off.

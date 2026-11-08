@@ -2,11 +2,13 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { validateSignup } from './validate.js';
-import { provisionClient, refreshNumber, updateScript } from './provision.js';
+import { provisionClient, refreshNumber, updateScript, attachIndianNumber } from './provision.js';
 import { buildDemo, currentDemo } from './demo.js';
 import { WebsiteError } from './website.js';
 import { createWebhookHandler, isAuthorized } from './webhook.js';
-import { usageThisMonth } from './usage.js';
+import { usageThisMonth, busiestToday } from './usage.js';
+import { billingProvider, stripeCheckout, stripeSignatureValid, stripeEventUpdate, razorpaySubscription, razorpaySignatureValid, razorpayEventUpdate, applyBillingUpdate } from './billing.js';
+import { countryOf } from './countries.js';
 import { recoverCalls } from './recover.js';
 import { ownerKeyValid, ownerUrl } from './owner.js';
 import { sendReport } from './report.js';
@@ -49,6 +51,21 @@ export function createApp(deps) {
   const app = express();
   if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);
   app.disable('x-powered-by');
+  // ---- Billing webhooks: need the raw body to check the signature, so they come before the JSON parser.
+  const raw = express.raw({ type: '*/*', limit: '1mb' });
+  app.post('/api/billing/stripe/webhook', raw, async (req, res) => {
+    const body = req.body?.toString('utf8') || '';
+    if (!stripeSignatureValid(config.stripe.webhookSecret, req.get('stripe-signature'), body)) return res.status(400).json({ error: 'bad signature' });
+    try { await applyBillingUpdate('stripe', stripeEventUpdate(JSON.parse(body)), deps); res.json({ received: true }); }
+    catch (e) { logger.error(`[billing] stripe webhook: ${e.message}`); res.status(500).json({ error: 'failed' }); }
+  });
+  app.post('/api/billing/razorpay/webhook', raw, async (req, res) => {
+    const body = req.body?.toString('utf8') || '';
+    if (!razorpaySignatureValid(config.razorpay.webhookSecret, req.get('x-razorpay-signature'), body)) return res.status(400).json({ error: 'bad signature' });
+    try { await applyBillingUpdate('razorpay', razorpayEventUpdate(JSON.parse(body)), deps); res.json({ received: true }); }
+    catch (e) { logger.error(`[billing] razorpay webhook: ${e.message}`); res.status(500).json({ error: 'failed' }); }
+  });
+
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: false, limit: '64kb' }));
 
@@ -114,12 +131,25 @@ export function createApp(deps) {
 
   // ---- Admin (Bearer ADMIN_TOKEN) ----
   const admin = express.Router();
+  // The owner's ADMIN_TOKEN, or a support person's token from SUPPORT_TOKENS. Changes are logged with the name.
+  const matches = (given, want) => { const a = Buffer.from(given), b = Buffer.from(want || ''); return b.length > 0 && a.length === b.length && timingSafeEqual(a, b); };
   admin.use((req, res, next) => {
-    const given = Buffer.from((req.get('authorization') || '').replace(/^Bearer\s+/i, ''));
-    const want = Buffer.from(config.adminToken || '');
-    if (!want.length || given.length !== want.length || !timingSafeEqual(given, want)) return res.status(401).json({ error: 'unauthorized' });
+    const given = (req.get('authorization') || '').replace(/^Bearer\s+/i, '');
+    const who = matches(given, config.adminToken) ? 'owner' : (config.supportTokens || []).find((t) => matches(given, t.token))?.name;
+    if (!who) return res.status(401).json({ error: 'unauthorized' });
+    req.adminUser = who;
+    if (req.method !== 'GET') logger.log(`[admin] ${who}: ${req.method} ${req.originalUrl}`);
     next();
   });
+  admin.get('/me', (req, res) => res.json({ name: req.adminUser }));
+  admin.get('/overview', wrap(async (_req, res) => {
+    res.json({ busiestToday: await busiestToday(db), lines: config.vapi.concurrency });
+  }));
+  admin.post('/clients/:id/attach-number', wrap(async (req, res) => {
+    const { normalizePhone } = await import('./phone.js');
+    try { res.json({ client: await attachIndianNumber(req.params.id, normalizePhone(req.body?.number, 'IN'), deps) }); }
+    catch (e) { res.status(e.status || 502).json({ error: e.message }); }
+  }));
   const usageOf = (c) => usageThisMonth(db, c, { now: (deps.now || (() => new Date()))(), timezone: config.timezone, includedMinutes: config.includedMinutes });
   admin.get('/clients', wrap(async (_req, res) => {
     const clients = (await db.listClients()).filter((c) => c.status !== 'demo');
@@ -199,7 +229,9 @@ export function createApp(deps) {
     }));
     res.set('Cache-Control', 'no-store');
     res.json({
-      shop: { business: c.business, contact: c.contact, phoneNumber: c.phoneNumber, status: c.status, timezone: c.details?.schedule?.timezone || config.timezone },
+      shop: { business: c.business, contact: c.contact, phoneNumber: c.phoneNumber, status: c.status, timezone: c.details?.schedule?.timezone || config.timezone,
+        country: countryOf(c).code, locale: countryOf(c).locale },
+      billing: { provider: billingProvider(config, c), status: c.details?.billing?.status || null },
       usage: await usageOf(c),
       items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error })),
       calls,
@@ -251,6 +283,18 @@ export function createApp(deps) {
   app.delete('/api/owner/:id/integrations', ownerGate, wrap(async (req, res) => {
     await db.deleteIntegration(req.client.id);
     res.json({ ok: true, integration: await integrationView(req.client.id) });
+  }));
+  // Start a subscription: Stripe Checkout for US shops, a Razorpay subscription link for Indian shops.
+  app.post('/api/owner/:id/billing/checkout', ownerGate, wrap(async (req, res) => {
+    const c = req.client, provider = billingProvider(config, c), fetchImpl = deps.syncFetch || globalThis.fetch;
+    if (!provider) return res.status(501).json({ error: 'Online payment is not set up yet. We will send you an invoice.' });
+    const back = ownerUrl(config, c);
+    try {
+      if (provider === 'stripe') return res.json({ url: await stripeCheckout(config, c, { successUrl: `${back}&billing=done`, cancelUrl: back, fetchImpl }) });
+      const r = await razorpaySubscription(config, c, { fetchImpl });
+      await db.updateClient(c.id, { details: { ...c.details, billing: { ...(c.details.billing || {}), provider: 'razorpay', status: 'pending', subscriptionId: r.subscriptionId } } });
+      return res.json({ url: r.url });
+    } catch (e) { logger.error(`[billing] checkout: ${e.message}`); return res.status(502).json({ error: e.message }); }
   }));
   app.post('/api/owner/:id/items/:itemId/sync', ownerGate, wrap(async (req, res) => {
     if (!(await loadIntegration(deps, req.client.id))) return res.status(409).json({ error: 'Connect Jobber or Housecall Pro first.' });

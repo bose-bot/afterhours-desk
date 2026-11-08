@@ -47,3 +47,38 @@ export async function checkUsageAlerts(client, { db, mailer, config, logger = co
   }
   return u;
 }
+
+// The most calls going on at the same moment since `sinceIso`, across every shop.
+export function peakFrom(rows) {
+  const ev = [];
+  for (const r of rows) {
+    const start = Date.parse(r.started_at), dur = Number(r.duration_s) || 0;
+    if (!Number.isFinite(start)) continue;
+    ev.push([start, 1], [start + dur * 1000, -1]);
+  }
+  ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]); // an end and a start at the same moment don't overlap
+  let now = 0, peak = 0;
+  for (const [, d] of ev) { now += d; peak = Math.max(peak, now); }
+  return peak;
+}
+
+export async function busiestToday(db, now = new Date()) {
+  return peakFrom(await db.callsStartedSince(new Date(now.getTime() - 24 * 3_600_000).toISOString()));
+}
+
+// Emails the operator once a day when calls at the same moment reach 80% of the account's lines,
+// so more lines can be bought before callers get turned away.
+export async function checkConcurrency({ db, mailer, config, logger = console, now = () => new Date() }) {
+  const lines = config.vapi.concurrency;
+  if (!lines) return null;
+  const t = now(), peak = await busiestToday(db, t);
+  if (peak < Math.ceil(lines * 0.8)) return peak;
+  const { created } = await db.getOrCreateSetting(`concurrency_alert:${t.toISOString().slice(0, 10)}`, () => t.toISOString());
+  if (created && config.mail.operatorEmail) {
+    try {
+      await mailer.send({ to: config.mail.operatorEmail, subject: `Phone lines: ${peak} of ${lines} in use at once`,
+        text: `In the last 24 hours, ${peak} calls were going on at the same moment. Your Vapi account takes ${lines} at once and turns the next caller away.\n\nBuy more lines in the Vapi dashboard, then set VAPI_CONCURRENCY to the new number.` });
+    } catch (e) { logger.error(`[lines] alert failed: ${e.message}`); }
+  }
+  return peak;
+}

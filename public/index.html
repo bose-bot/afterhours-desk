@@ -555,17 +555,19 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     <div class="form-shell">
   <form class="fs" id="signupForm" novalidate>
     <p class="hp"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></p>
+    <div class="field full"><label for="f_country">Country</label><select id="f_country" name="country"><option value="US">United States</option><option value="IN">India</option></select></div>
     <div class="field"><label for="f_business">Business name</label><input id="f_business" name="business" required maxlength="80"></div>
     <div class="field"><label for="f_contact">Your name</label><input id="f_contact" name="contact" required maxlength="80" autocomplete="name"></div>
-    <div class="field"><label for="f_phone">Your mobile</label><input id="f_phone" name="phone" type="tel" required autocomplete="tel" placeholder="(513) 555-0142"><span class="hint">We pick a local number with the same area code.</span></div>
+    <div class="field"><label for="f_phone">Your mobile</label><input id="f_phone" name="phone" type="tel" required autocomplete="tel" placeholder="(513) 555-0142"><span class="hint" id="phoneHint">We pick a local number with the same area code.</span></div>
     <div class="field"><label for="f_email">Email</label><input id="f_email" name="email" type="email" required autocomplete="email"><span class="hint">Bookings and call summaries go here.</span></div>
     <div class="field full"><label for="f_area">Service area</label><input id="f_area" name="area" maxlength="300" placeholder="Cities or ZIP codes you serve"></div>
     <div class="field"><label for="f_workDays">Days you take appointments</label><select id="f_workDays" name="workDays"><option value="mon-fri">Monday to Friday</option><option value="mon-sat">Monday to Saturday</option><option value="every-day">Every day</option></select></div>
-    <div class="field"><label for="f_timezone">Time zone</label><select id="f_timezone" name="timezone"><option value="America/New_York">Eastern</option><option value="America/Chicago">Central</option><option value="America/Denver">Mountain</option><option value="America/Phoenix">Arizona</option><option value="America/Los_Angeles">Pacific</option><option value="America/Anchorage">Alaska</option><option value="Pacific/Honolulu">Hawaii</option></select></div>
+    <div class="field"><label for="f_timezone">Time zone</label><select id="f_timezone" name="timezone"><option value="Asia/Kolkata" hidden>India (IST)</option><option value="America/New_York">Eastern</option><option value="America/Chicago">Central</option><option value="America/Denver">Mountain</option><option value="America/Phoenix">Arizona</option><option value="America/Los_Angeles">Pacific</option><option value="America/Anchorage">Alaska</option><option value="Pacific/Honolulu">Hawaii</option></select></div>
     <div class="field"><label for="f_dayStart">First appointment</label><input id="f_dayStart" name="dayStart" type="time" value="08:00" step="1800"></div>
     <div class="field"><label for="f_dayEnd">Last appointment ends</label><input id="f_dayEnd" name="dayEnd" type="time" value="17:00" step="1800"><span class="hint">Visits are booked in 2-hour windows.</span></div>
     <div class="field"><label for="f_office">Office number</label><input id="f_office" name="office" type="tel"></div>
     <div class="field"><label for="f_oncall">After-hours on-call number</label><input id="f_oncall" name="oncall" type="tel"></div>
+    <div class="field" id="gaslineField" hidden><label for="f_gasline">Piped gas company emergency number</label><input id="f_gasline" name="gasline" type="tel" placeholder="e.g. 1800 22 1166"><span class="hint">Optional. Callers who smell gas are told to call 112, or this number. Without it we give the LPG helpline, 1906.</span></div>
     <div class="field"><label for="f_fee">Service call fee</label><input id="f_fee" name="fee" maxlength="120" placeholder="$89, waived with repair"></div>
     <div class="field"><label for="f_afterfee">After-hours fee</label><input id="f_afterfee" name="afterfee" maxlength="120" placeholder="+$75"></div>
     <div class="field full"><label for="f_services">Services you offer</label><input id="f_services" name="services" maxlength="400" placeholder="Furnace &amp; AC repair, tune-ups, heat pumps, new system estimates"></div>
@@ -895,6 +897,25 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
 <script>
 (() => {
   const form = document.getElementById('signupForm');
+  // India: Indian phone format, IST, AC-service examples and the gas helpline field.
+  (() => {
+    const c = document.getElementById('f_country'), tz = document.getElementById('f_timezone');
+    const ph = document.getElementById('f_phone'), hint = document.getElementById('phoneHint');
+    const fee = document.getElementById('f_fee'), after = document.getElementById('f_afterfee'), svc = document.getElementById('f_services'), area = document.getElementById('f_area');
+    const sync = () => {
+      const india = c.value === 'IN';
+      document.getElementById('gaslineField').hidden = !india;
+      [...tz.options].forEach((o) => { o.hidden = india ? o.value !== 'Asia/Kolkata' : o.value === 'Asia/Kolkata'; });
+      tz.value = india ? 'Asia/Kolkata' : (tz.value === 'Asia/Kolkata' ? 'America/New_York' : tz.value);
+      ph.placeholder = india ? '98765 43210' : '(513) 555-0142';
+      hint.textContent = india ? 'We connect a +91 number for your shop and email it to you.' : 'We pick a local number with the same area code.';
+      fee.placeholder = india ? '₹299 visit charge, waived with repair' : '$89, waived with repair';
+      after.placeholder = india ? '+₹200 after 8 PM' : '+$75';
+      svc.placeholder = india ? 'Split and window AC service, gas refill, installation, AMC' : 'Furnace & AC repair, tune-ups, heat pumps, new system estimates';
+      area.placeholder = india ? 'Areas or PIN codes you serve' : 'Cities or ZIP codes you serve';
+    };
+    c.addEventListener('change', sync); sync();
+  })();
   const btn = document.getElementById('signupBtn');
   const formError = document.getElementById('formError');
   const done = document.getElementById('signupDone');

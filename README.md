@@ -23,6 +23,12 @@ Sign-up form ──► Vapi assistant created ──► local phone number assig
 - **Call summaries.** After every call the shop gets the bookings, messages and Vapi's summary by email.
 - **Owner dashboard.** Each shop gets a private link (in every email, and copyable from the admin page) to a phone-friendly page with callbacks waiting (urgent first), upcoming visits, recent calls with summaries and transcripts, and minutes used. Owners tap Call or Mark done; done items can be moved back.
 - **Books into Jobber or Housecall Pro.** From their dashboard, owners connect Jobber (sign in) or Housecall Pro (paste an API key). Every visit the receptionist books is copied in: in Jobber as a client, property and request titled with the caller's chosen window; in Housecall Pro as a customer and a scheduled job. Repeat callers are matched by phone. Tokens and keys are encrypted in the database. If a sync fails, the booking still stands, the owner still gets the email, and the dashboard shows the reason with a Retry button.
+- **United States and India.** Sign-up asks for the country. Indian shops get an AC-service script, Hindi-English (Hinglish) speech recognition, a "Namaste" greeting, 112 and the LPG helpline 1906 (or their piped-gas company) in the safety line, IST, and +91 number formats everywhere. US shops keep the original script.
+- **Numbers past Vapi's free 10.** With Twilio keys set, a shop that can't get a free Vapi number gets a local Twilio number in its area code, imported into Vapi. If Vapi refuses it, the Twilio number is released so it costs nothing. `NUMBER_SOURCE=twilio` uses Twilio for every shop.
+- **Indian numbers.** Indian calls must run through licensed Indian operators, so Indian shops wait in "Needs +91 number" until you attach a number from your Indian provider on the admin page. It connects through a SIP credential you set up once in Vapi.
+- **Billing.** Owners start a subscription from their dashboard: Stripe Checkout for US shops (free trial, optional Stripe Tax for state sales tax), Razorpay for Indian shops (rupees, GST invoices). Signed webhooks keep each shop's status, and you get an email when a payment fails or a subscription ends. Receptionists keep answering; pausing is your call.
+- **Busy-line alert.** The admin page shows the most calls going on at once in the last 24 hours, across all shops, against your Vapi lines. You get an email at 80%.
+- **Support logins.** `SUPPORT_TOKENS` gives teammates their own admin sign-in; every change is logged with their name.
 - **Morning report.** At 7 AM in each shop's time zone, the owner gets one email covering everything since the last report: who to call back, what's booked, how many calls. A quiet night sends nothing.
 - **No lost reports.** If the server was asleep or restarting when a call ended, it fetches the missed reports from Vapi every 10 minutes and still emails the shop, once.
 - **Minutes and costs.** Every call's length and Vapi cost are stored. The admin page shows each shop's minutes this month against its plan, and you get an email when a shop reaches 80% and 100% of its included minutes. Calls keep being answered past the limit.
@@ -38,7 +44,7 @@ git clone https://github.com/<you>/afterhours-desk.git
 cd afterhours-desk
 npm install
 cp .env.example .env      # then fill in the required values
-npm test                  # 75 tests, uses a fake Vapi, no account needed
+npm test                  # 88 tests, uses a fake Vapi, no account needed
 npm start
 ```
 
@@ -92,6 +98,13 @@ Click the button, paste the same keys on the setup screen, and deploy. It create
 | `OPERATOR_EMAIL` | Where new-client, failure and minute alerts go. |
 | `INCLUDED_MINUTES` | Call minutes in a plan each month (default 300, as on the website). Alerts at 80% and 100%. `0` turns them off. |
 | `JOBBER_CLIENT_ID`, `JOBBER_CLIENT_SECRET` | From your app at developer.getjobber.com. Without them the Connect Jobber button is hidden. |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Buy US numbers on Twilio when Vapi's free numbers run out. `NUMBER_SOURCE=twilio` to always use Twilio. |
+| `VAPI_IN_SIP_CREDENTIAL_ID` | Your Indian provider's SIP trunk, added once in Vapi as a credential. Needed to attach +91 numbers. |
+| `VAPI_IN_VOICE_PROVIDER`, `VAPI_IN_VOICE_ID` | Optional Indian voice. `VAPI_IN_TRANSCRIBER_*` overrides the default Deepgram nova-3 multilingual transcriber. |
+| `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID`, `STRIPE_WEBHOOK_SECRET` | US subscriptions. Webhook URL: `/api/billing/stripe/webhook`. `STRIPE_TRIAL_DAYS` (default 14), `STRIPE_AUTOMATIC_TAX=true` once Stripe Tax is set up. |
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_PLAN_ID`, `RAZORPAY_WEBHOOK_SECRET` | Indian subscriptions. Webhook URL: `/api/billing/razorpay/webhook`. |
+| `VAPI_CONCURRENCY` | How many calls your Vapi account takes at once (default 10), for the busy-line alert. |
+| `SUPPORT_TOKENS` | `Name:token,Name2:token2` for teammates on the admin page. Tokens need 24+ characters. |
 | `MORNING_REPORT_HOUR` | Local hour for the overnight email (default 7). `off` turns it off. |
 | `RECOVER_EVERY_MINUTES` | How often to fetch call reports that never reached the server (default 10). `0` turns it off. |
 
@@ -110,6 +123,8 @@ All admin calls need `Authorization: Bearer $ADMIN_TOKEN`. If you didn't set `AD
 | `POST /api/admin/clients/:id/refresh-number` | Fetch a number that wasn't assigned yet at setup. |
 | `POST /api/admin/clients/:id/update-script` | Send the latest script, greeting, tools and phone fallback to a live shop. |
 | `POST /api/admin/clients/:id/send-report` | Email that shop its report for the last 24 hours, right now. |
+| `POST /api/admin/clients/:id/attach-number` | India: connect a +91 number from your Indian provider and go live. |
+| `GET /api/admin/overview` | Busiest moment in the last 24 hours against your Vapi lines. |
 | `POST /api/admin/recover-calls` | Fetch any call reports from Vapi that never arrived, right now. |
 
 ```bash
@@ -138,6 +153,8 @@ Webhook security: each assistant's server URL carries a per-deployment secret to
 - **Test the transfer once on your real number.** Call the shop's AI number, say you smell gas, and check the on-call phone rings. Free Vapi numbers can't place outbound calls; if the transfer doesn't go through, import a Twilio number for that shop.
 - **Set up Jobber once, for all your shops.** Create a free developer account at developer.getjobber.com, create an app, set its callback URL to `https://<your server>/api/integrations/jobber/callback`, and give it read and write access to clients, properties and requests, plus read access to the account. Put its client ID and secret in `JOBBER_CLIENT_ID` and `JOBBER_CLIENT_SECRET`. Then connect a test Jobber account from a dashboard and book a call before telling shops about it.
 - **Check the Housecall Pro sync with a real account.** It follows Housecall Pro's public API (customers, addresses, jobs with a schedule, job notes), which needs their MAX plan. The tests use a fake of that API, so book one real test visit first and confirm the job lands where you expect.
+- **India before the first shop.** Confirm with Vapi that your Indian provider's SIP route is allowed, add it as a credential, and call one attached number end to end. Have an Indian lawyer review the greeting notice and data handling against the DPDP Rules (main duties from May 13, 2027).
+- **Billing before charging.** Create the Stripe price and the Razorpay plan, point both webhooks at this server, and run one test payment in each.
 - **Call recording and AI disclosure laws** differ by state. The greeting tells callers the call is recorded, which covers states that need every party's consent. Check the rules where your clients and their callers are.
 - **Bookings are requests.** They're stored here and emailed to the shop; they don't write into ServiceTitan, Housecall Pro or Google Calendar yet. That's the most useful next contribution.
 - **Free Vapi numbers are inbound-only.**

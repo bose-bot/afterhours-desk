@@ -2,7 +2,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { openSlots } from './scheduling.js';
 import { callSummaryEmail } from './emails.js';
-import { callDuration, checkUsageAlerts } from './usage.js';
+import { callDuration, checkUsageAlerts, checkConcurrency } from './usage.js';
 import { syncBooking } from './integrations/sync.js';
 
 const URGENCIES = ['Emergency', 'Priority', 'Routine'];
@@ -108,13 +108,15 @@ export function createWebhookHandler(deps) {
       // If the recovery job already handled this call (the report came very late), don't email twice.
       const seen = await db.getCall(callId);
       const cost = Number.isFinite(message.cost) ? message.cost : (Number.isFinite(message.call?.cost) ? message.call.cost : null);
-      await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80), durationS: callDuration(message), cost, source: 'webhook' });
+      await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80), durationS: callDuration(message), cost, source: 'webhook',
+        startedAt: message.startedAt || message.call?.startedAt || (Number.isFinite(callDuration(message)) ? new Date(Date.now() - callDuration(message) * 1000).toISOString() : null) });
 
       if (!seen) {
         const items = (await db.listBookings(client.id)).filter((b) => b.call_id === callId);
         mailer.send(callSummaryEmail(config, client, { items, callerPhone, summary })
         ).catch((e) => logger.error(`[mail] call summary failed: ${e.message}`));
         checkUsageAlerts(client, deps).catch((e) => logger.error(`[usage] ${e.message}`));
+        checkConcurrency(deps).catch((e) => logger.error(`[lines] ${e.message}`));
       }
     }
 

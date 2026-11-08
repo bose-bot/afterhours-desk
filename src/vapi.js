@@ -45,8 +45,8 @@ export function createVapiClient({ apiKey, baseUrl = 'https://api.vapi.ai', fetc
     createPhoneNumber: (body) => call('POST', '/phone-number', body),
     getPhoneNumber: (id) => call('GET', `/phone-number/${encodeURIComponent(id)}`),
     updatePhoneNumber: (id, body) => call('PATCH', `/phone-number/${encodeURIComponent(id)}`, body),
-    listCalls: ({ assistantId, createdAtGt, limit = 100 }) => {
-      const q = new URLSearchParams({ assistantId, limit: String(limit), ...(createdAtGt ? { createdAtGt } : {}) });
+    listCalls: ({ assistantId, createdAtGt, createdAtLt, limit = 100 }) => {
+      const q = new URLSearchParams({ limit: String(limit), ...(assistantId ? { assistantId } : {}), ...(createdAtGt ? { createdAtGt } : {}), ...(createdAtLt ? { createdAtLt } : {}) });
       return call('GET', `/call?${q}`);
     },
   };

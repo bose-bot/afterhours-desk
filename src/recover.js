@@ -5,6 +5,7 @@ import { callSummaryEmail } from './emails.js';
 import { callDuration, checkUsageAlerts } from './usage.js';
 
 const clip = (v, n) => (v == null ? '' : String(v)).trim().slice(0, n);
+const PAGE = 1000;
 const SETTLE_MS = 3 * 60_000;     // give the normal webhook a few minutes to arrive first
 const OVERLAP_MS = 2 * 3_600_000; // re-check the last two hours each run, in case a call was still going
 
@@ -14,14 +15,28 @@ export async function recoverCalls(deps) {
   const last = Date.parse(await db.getSetting('calls_synced_at') || '') || (t.getTime() - 24 * 3_600_000);
   const since = new Date(Math.min(last, t.getTime()) - OVERLAP_MS).toISOString();
   const clients = (await db.listClients()).filter((c) => c.vapiAssistantId && ['active', 'demo'].includes(c.status));
+  const byAssistant = new Map(clients.map((c) => [c.vapiAssistantId, c]));
   let recovered = 0;
 
-  for (const client of clients) {
-    let calls;
-    try { calls = await vapi.listCalls({ assistantId: client.vapiAssistantId, createdAtGt: since, limit: 100 }); }
-    catch (e) { logger.error(`[recover] ${client.business}: ${e.message}`); continue; }
+  // One request for every shop's calls (paged), instead of one request per shop: at 1,000 shops that is
+  // the difference between a few calls to Vapi every 10 minutes and a thousand.
+  const calls = [];
+  try {
+    let before;
+    for (let page = 0; page < 20; page++) {
+      const batch = await vapi.listCalls({ createdAtGt: since, ...(before ? { createdAtLt: before } : {}), limit: PAGE });
+      const list = Array.isArray(batch) ? batch : [];
+      calls.push(...list);
+      if (list.length < PAGE) break;
+      before = list.map((c) => c.createdAt).filter(Boolean).sort().at(0);
+      if (!before) break;
+    }
+  } catch (e) { logger.error(`[recover] listing calls failed: ${e.message}`); return { recovered: 0, checkedShops: clients.length }; }
 
-    for (const c of Array.isArray(calls) ? calls : []) {
+  for (const c of calls) {
+    const client = byAssistant.get(c.assistantId);
+    if (!client) continue;
+    {
       const endedAt = Date.parse(c.endedAt || '');
       if (!c.id || c.status !== 'ended' || !Number.isFinite(endedAt) || t.getTime() - endedAt < SETTLE_MS) continue;
       if (await db.getCall(c.id)) continue;
@@ -32,7 +47,7 @@ export async function recoverCalls(deps) {
         id: c.id, clientId: client.id, callerPhone, summary,
         transcript: clip(c.artifact?.transcript ?? c.transcript, 50_000), endedReason: clip(c.endedReason, 80),
         durationS: callDuration(c), cost: Number.isFinite(c.cost) ? c.cost : null, source: 'recovered',
-        createdAt: c.startedAt || c.createdAt || c.endedAt,
+        createdAt: c.startedAt || c.createdAt || c.endedAt, startedAt: c.startedAt || null,
       });
       recovered++;
       // Bookings made during the call are already saved if the tool calls got through.

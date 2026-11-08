@@ -48,6 +48,8 @@ input{font:inherit;color:var(--fg);background:var(--bg);border:1.5px solid var(-
 .s-pending_approval{background:var(--warn-bg);color:var(--warn)}
 .s-provisioning{background:var(--cool-bg);color:var(--cool)}
 .s-failed{background:var(--crit-bg);color:var(--crit)}
+.s-needs_number{background:var(--warn-bg);color:var(--warn)}
+.flag{font-size:11.5px;font-weight:800;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-left:6px;vertical-align:.15em}
 .u-Emergency{background:var(--crit-bg);color:var(--crit)}.u-Priority{background:var(--warn-bg);color:var(--warn)}.u-Routine{background:var(--ok-bg);color:var(--ok)}
 .tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:18px}
 table{border-collapse:collapse;width:100%;min-width:720px}
@@ -110,6 +112,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
       <div class="stat"><span class="muted">Failed setups</span><b id="nFailed">0</b></div>
       <div class="stat"><span class="muted">All shops</span><b id="nAll">0</b></div>
       <div class="stat"><span class="muted">Call cost this month</span><b id="nCost">$0</b></div>
+      <div class="stat" id="statLines"><span class="muted">Busiest moment, 24 h</span><b id="nLines">0</b><span class="hint" id="linesHint">calls at once</span></div>
     </div>
     <div class="tablebox">
       <table>
@@ -134,8 +137,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     for (const c of kids) if (c != null) n.append(c);
     return n;
   };
-  const LABEL = { active: 'Live', pending_approval: 'Needs approval', provisioning: 'Setting up…', failed: 'Setup failed', paused: 'Paused' };
-  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (n || '—'); };
+  const LABEL = { active: 'Live', pending_approval: 'Needs approval', provisioning: 'Setting up…', failed: 'Setup failed', paused: 'Paused', needs_number: 'Needs +91 number' };
+  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); if (m) return `(${m[1]}) ${m[2]}-${m[3]}`; const i = /^\+91(\d{5})(\d{5})$/.exec(n || ''); return i ? `+91 ${i[1]} ${i[2]}` : (n || '—'); };
   const when = (iso) => iso ? new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 
   let token = '';
@@ -160,6 +163,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     try {
       const { clients } = await api('GET', '/api/admin/clients');
       render(clients);
+      api('GET', '/api/admin/overview').then((o) => {
+        $('#nLines').textContent = `${o.busiestToday} / ${o.lines}`;
+        $('#linesHint').textContent = o.busiestToday >= Math.ceil(o.lines * 0.8) ? 'Near the limit: buy more lines in Vapi' : 'calls at once, of your Vapi lines';
+        $('#statLines').classList.toggle('hot', o.busiestToday >= Math.ceil(o.lines * 0.8));
+      }).catch(() => {});
       if (selected) openDetail(selected, true);
       // Keep refreshing while anything is still being set up.
       clearTimeout(timer);
@@ -211,6 +219,18 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     return box;
   }
 
+  // India: paste the +91 number from your licensed provider; it's connected to this shop's assistant.
+  function attachTools(c) {
+    const input = el('input', { id: `attach-${c.id}`, type: 'tel', placeholder: '+91 98765 43210', 'aria-label': 'Indian number', style: 'min-height:42px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;padding:6px 12px' });
+    const note = el('span', { class: 'hint', text: 'Get the number from your Indian provider first.' });
+    const btn = el('button', { class: 'btn', type: 'button', text: 'Attach Indian number', onclick: async (ev) => {
+      const b = ev.currentTarget; b.disabled = true;
+      try { await api('POST', `/api/admin/clients/${encodeURIComponent(c.id)}/attach-number`, { number: input.value }); note.textContent = 'Attached. The welcome email is on its way.'; await load(); }
+      catch (e) { note.textContent = e.message; b.disabled = false; }
+    } });
+    return el('div', { style: 'display:grid;gap:6px' }, el('div', { class: 'row', style: 'gap:8px' }, input, btn), note);
+  }
+
   // The owner's private dashboard link: copy it to send by text, or email them the morning report now.
   function ownerLinkTools(c, url) {
     const note = el('span', { class: 'hint', text: '' });
@@ -252,7 +272,10 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Service area' }), el('dd', { text: d.area || '—' }),
           el('dt', { text: 'Office / on-call' }), el('dd', { class: 'mono', text: `${pretty(d.office)} / ${pretty(d.oncall)}` }),
           el('dt', { text: 'Fees' }), el('dd', { text: [d.fee, d.afterfee].filter(Boolean).join(' · ') || '—' }),
+          el('dt', { text: 'Country' }), el('dd', { text: d.country === 'IN' ? 'India' : 'United States' }),
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
+          el('dt', { text: 'Billing' }), el('dd', { text: d.billing ? `${d.billing.status} (${d.billing.provider === 'razorpay' ? 'Razorpay' : 'Stripe'})` : 'No subscription yet' }),
+          ...(c.status === 'needs_number' ? [el('dt', { text: 'Indian number' }), el('dd', {}, attachTools(c))] : []),
           el('dt', { text: 'This month' }), el('dd', {}, usageCell(usage)),
           el('dt', { text: 'Vapi assistant' }), el('dd', { class: 'mono', text: c.vapiAssistantId || '—' }),
           el('dt', { text: 'Scheduling tool' }), el('dd', { text: integration ? `${integration.name}${integration.account ? ` · ${integration.account}` : ''}` : 'Not connected (the owner connects it from their dashboard)' }),
