@@ -1,3 +1,4 @@
+import { ownerUrl } from './owner.js';
 // Emails sent to shop owners, as designed HTML plus a plain-text version for clients that want it.
 // Everything that came from a caller or a form is escaped before it goes into HTML.
 
@@ -26,6 +27,9 @@ ${body}
 </table></td></tr></table></body></html>`;
 }
 
+// A quiet link to the owner's dashboard, shown at the bottom of every email when the server can make one.
+const dashButton = (url) => url ? `<tr><td style="padding:4px 0 6px;"><a href="${esc(url)}" style="display:inline-block;border:1px solid ${C.cool};color:${C.cool};font-weight:700;font-size:14.5px;text-decoration:none;padding:11px 20px;border-radius:999px;">Open your dashboard</a></td></tr>` : '';
+
 const panel = (inner, border = C.line) => `<tr><td style="background:${C.panel};border:1px solid ${border};border-radius:18px;padding:26px 24px;">${inner}</td></tr><tr><td style="height:14px;"></td></tr>`;
 
 export function welcomeEmail(config, client) {
@@ -42,8 +46,8 @@ What to do next:
 2. Set your business line to forward calls to it when you're busy or closed. Most carriers call this "conditional call forwarding" (forward on busy / no answer). Your carrier's support page or app will show how.
 3. Reply to this email with anything it should say differently.
 
-New bookings and messages will be sent to this address.
-
+New bookings and messages will be sent to this address, with a summary each morning at 7.
+${ownerUrl(config, client) ? `\nYour dashboard (bookmark it): ${ownerUrl(config, client)}\n` : ''}
 ${brand}`;
 
   const steps = [
@@ -63,8 +67,8 @@ ${brand}`;
   `, C.heat) + panel(`
     <div style="font-size:18px;font-weight:800;margin-bottom:18px;">Next steps</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${steps}</table>
-    <div style="font-size:14px;color:${C.dim};border-top:1px solid ${C.line};padding-top:16px;">Hi ${esc(client.contact)}, every booking and message will be emailed to this address right after the call.</div>
-  `);
+    <div style="font-size:14px;color:${C.dim};border-top:1px solid ${C.line};padding-top:16px;">Hi ${esc(client.contact)}, every booking and message will be emailed to this address right after the call, with a summary each morning at 7. Your dashboard shows all of them in one place.</div>
+  `) + dashButton(ownerUrl(config, client));
 
   return {
     to: client.email,
@@ -83,7 +87,8 @@ export function callSummaryEmail(config, client, { items, callerPhone, summary, 
     ? `BOOKED ${b.slot_label}: ${b.caller_name} ${b.caller_phone} | ${b.address} | ${b.issue} [${b.urgency}]`
     : `MESSAGE [${b.urgency}]: ${b.caller_name || 'Unknown'} ${b.caller_phone || callerPhone} | ${b.issue}`);
   const lateNote = 'This report arrived late because our server could not be reached when the call ended. If the caller asked for a booking, check the summary and call them to confirm.';
-  const text = `${late ? lateNote + '\n\n' : ''}${lines.length ? lines.join('\n') + '\n\n' : ''}Caller: ${callerPhone || 'unknown'}\n\nSummary:\n${summary || '(no summary)'}\n`;
+  const dash = ownerUrl(config, client);
+  const text = `${late ? lateNote + '\n\n' : ''}${lines.length ? lines.join('\n') + '\n\n' : ''}Caller: ${callerPhone || 'unknown'}\n\nSummary:\n${summary || '(no summary)'}\n${dash ? `\nDashboard: ${dash}\n` : ''}`;
 
   const cards = items.map((b) => {
     const color = URGENCY[b.urgency] || C.dim;
@@ -110,12 +115,57 @@ export function callSummaryEmail(config, client, { items, callerPhone, summary, 
       <div style="font-size:14px;color:${C.dim};margin-bottom:8px;">What happened on the call</div>
       <div style="font-size:15.5px;line-height:1.6;">${esc(summary || 'No summary was recorded for this call.')}</div>
       <div style="font-size:13px;color:#6E8295;margin-top:14px;">Caller ID: ${esc(prettyPhone(callerPhone) || callerPhone || 'unknown')}</div>
-    `);
+    `) + dashButton(ownerUrl(config, client));
 
   return {
     to: client.email,
     subject: `${urgent ? 'EMERGENCY · ' : ''}Call summary: ${who}`,
     text,
     html: shell({ brand, preheader: lines[0] || `Call from ${callerPhone || 'a caller'}`, body }),
+  };
+}
+
+/** The 7 AM email: calls to return first, then visits booked, then a count of every call. */
+export function morningReportEmail(config, client, { calls, callbacks, booked }) {
+  const brand = config.brandName;
+  const dash = ownerUrl(config, client);
+  const plural = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+  const headline = [plural(calls.length, 'call'), booked.length ? `${booked.length} booked` : '', callbacks.length ? `${callbacks.length} to call back` : ''].filter(Boolean).join(', ');
+  const urgentCount = callbacks.filter((b) => b.urgency === 'Emergency' || b.urgency === 'Priority').length;
+
+  const textLines = [
+    `Good morning ${client.contact}. Since the last report, ${client.business} got ${headline}.`, '',
+    ...(callbacks.length ? ['CALL BACK TODAY', ...callbacks.map((b) => `- [${b.urgency || 'Routine'}] ${b.caller_name || 'Unknown'} ${b.caller_phone || ''}: ${b.issue || ''}`), ''] : []),
+    ...(booked.length ? ['BOOKED', ...booked.map((b) => `- ${b.slot_label}: ${b.caller_name || ''} ${b.caller_phone || ''}, ${b.address || ''} (${b.issue || ''})`), ''] : []),
+    ...(dash ? [`Everything is on your dashboard: ${dash}`] : []),
+  ];
+
+  const row = (b, kind) => {
+    const color = URGENCY[b.urgency] || C.dim;
+    const phone = b.caller_phone;
+    const top = kind === 'booking' ? esc(b.slot_label || '') : `<span style="color:${color};font-weight:800;">${esc(b.urgency || 'Routine')}</span>`;
+    return `<tr><td style="padding:14px 0;border-top:1px solid ${C.line};">
+      <div style="font-size:13px;color:${C.dim};margin-bottom:4px;">${top}</div>
+      <div style="font-size:16px;font-weight:700;">${esc(b.caller_name || 'Unknown caller')}${b.address ? ` <span style="font-weight:400;color:${C.dim};">· ${esc(b.address)}</span>` : ''}</div>
+      <div style="font-size:14.5px;color:${C.ink};margin-top:2px;">${esc(b.issue || '')}</div>
+      ${phone ? `<a href="tel:${esc(phone)}" style="display:inline-block;margin-top:6px;color:${C.heat};font-weight:700;font-size:14.5px;text-decoration:none;">${esc(prettyPhone(phone) || phone)}</a>` : ''}
+    </td></tr>`;
+  };
+  const tile = (n, label, color) => `<td style="width:33%;padding:0 6px 0 0;"><div style="background:${C.night};border:1px solid ${C.line};border-radius:14px;padding:14px;"><div style="font-size:30px;font-weight:800;color:${color};line-height:1;">${n}</div><div style="font-size:13px;color:${C.dim};margin-top:6px;">${label}</div></div></td>`;
+
+  const body = panel(`
+      <div style="font-size:14px;color:${C.cool};font-weight:700;margin-bottom:10px;">Morning report</div>
+      <div style="font-size:26px;line-height:1.15;font-weight:800;letter-spacing:-.02em;margin-bottom:18px;">Good morning, ${esc(client.contact)}. Here's what came in.</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${tile(calls.length, 'calls answered', C.ink)}${tile(booked.length, 'visits booked', C.ok)}${tile(callbacks.length, 'to call back', callbacks.length ? C.heat : C.dim)}</tr></table>
+    `, urgentCount ? C.heat : C.line)
+    + (callbacks.length ? panel(`<div style="font-size:18px;font-weight:800;margin-bottom:6px;">Call back today</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${callbacks.map((b) => row(b, 'message')).join('')}</table>`, urgentCount ? C.heat : C.line) : '')
+    + (booked.length ? panel(`<div style="font-size:18px;font-weight:800;margin-bottom:6px;">Booked</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${booked.map((b) => row(b, 'booking')).join('')}</table>`) : '')
+    + dashButton(dash);
+
+  return {
+    to: client.email,
+    subject: `${urgentCount ? 'Urgent callbacks · ' : ''}Overnight at ${client.business}: ${headline}`,
+    text: textLines.join('\n'),
+    html: shell({ brand, preheader: `${headline}.`, body }),
   };
 }

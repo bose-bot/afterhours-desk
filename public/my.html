@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<title>Your dashboard · AfterHours Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap">
+<style>
+:root{
+  /* Same night-shift palette as the public site and the emails. */
+  --bg:#0D1621;--surface:#132131;--surface-2:#192B3E;--fg:#E9EFF3;--muted:#9AABB9;--line:#263B51;
+  --heat:#FF8A3D;--on-heat:#1C0D02;--cool:#5CC8FF;--crit:#FF9488;--ok:#74E0A9;
+  --display:'Archivo','Segoe UI',system-ui,sans-serif;--mono:ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(90% 40% at 100% -10%,rgba(92,200,255,.10),transparent 60%),var(--bg);background-attachment:fixed;color:var(--fg);font-family:var(--display);font-size:16px;line-height:1.5;min-height:100vh;
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:760px;margin:0 auto;padding-block:24px 64px;display:flex;flex-direction:column;gap:28px}
+h1,h2{margin:0;font-weight:800;letter-spacing:-.02em;line-height:1.1;font-variation-settings:'wdth' 115;text-wrap:balance}
+h1{font-size:clamp(28px,7vw,40px)}h2{font-size:20px;display:flex;align-items:baseline;gap:10px}
+h2 .count{font-size:14px;color:var(--muted);font-weight:600}
+p{margin:0}
+.brand{font-weight:800;font-size:15px;color:var(--muted);display:flex;align-items:center;gap:10px}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--heat);box-shadow:0 0 0 5px rgba(255,138,61,.15)}
+.sub{color:var(--muted);margin-top:8px}
+.sub b{color:var(--cool);font-weight:700;font-variant-numeric:tabular-nums}
+.live{display:inline-block;font-size:12.5px;font-weight:800;color:var(--ok);border:1px solid var(--ok);border-radius:99px;padding:1px 9px;margin-left:6px;vertical-align:.1em}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:620px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.tile b{display:block;font-size:34px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;font-variation-settings:'wdth' 120}
+.tile span{display:block;font-size:13.5px;color:var(--muted);margin-top:6px}
+.tile.hot{border-color:var(--heat)}.tile.hot b{color:var(--heat)}
+.meter{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+.meter i{display:block;height:100%;background:var(--ok)}
+.meter.warn i{background:var(--heat)}.meter.over i{background:var(--crit)}
+section{display:flex;flex-direction:column;gap:12px}
+.list{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:start}
+.card.urgent{border-color:var(--heat)}.card.emergency{border-color:var(--crit)}
+.card .meta{font-size:13.5px;color:var(--muted)}
+.card .who{font-size:17px;font-weight:700}
+.card .issue{grid-column:1/-1}
+.card .actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.pill{display:inline-block;font-size:12px;font-weight:800;padding:1px 9px;border-radius:99px;border:1px solid currentColor;margin-right:8px}
+.pill.Emergency{color:var(--crit)}.pill.Priority{color:var(--heat)}.pill.Routine{color:var(--ok)}
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:9px 18px;border-radius:999px;text-decoration:none}
+.btn.call{background:var(--heat);color:var(--on-heat)}
+.btn.ghost{background:transparent;color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+.btn:focus-visible{outline:3px solid var(--cool);outline-offset:2px}
+.slot{font-weight:800;color:var(--ok)}
+.empty{color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:16px}
+.call-row{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.call-row header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13.5px;color:var(--muted)}
+.call-row header b{color:var(--fg);font-size:15.5px;font-variant-numeric:tabular-nums}
+.call-row p{margin-top:6px}
+details summary{cursor:pointer;color:var(--cool);font-weight:700;font-size:14px;margin-top:8px}
+pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:13px;color:var(--muted);background:var(--bg);border-radius:10px;padding:12px;margin:8px 0 0;max-height:320px;overflow:auto}
+.late{color:var(--heat);font-weight:700}
+.done-card{opacity:.6}
+.foot{font-size:13px;color:var(--muted);text-align:center}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);font-weight:700;border-radius:999px;padding:10px 12px 10px 18px;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px)}
+.toast span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast{width:max-content;max-width:min(420px,calc(100% - 32px))}
+.toast button{flex:none;appearance:none;border:0;background:var(--bg);color:var(--fg);font:inherit;font-weight:700;border-radius:999px;padding:6px 14px;cursor:pointer}
+.err{background:var(--surface);border:1px solid var(--crit);border-radius:16px;padding:20px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="brand"><i></i>AfterHours Desk</div>
+    <h1 id="shop" style="margin-top:14px">Your dashboard</h1>
+    <p class="sub" id="sub">Loading…</p>
+  </header>
+
+  <div id="error" class="err" hidden></div>
+
+  <div id="app" hidden>
+    <div class="tiles" aria-label="At a glance">
+      <div class="tile" id="tCallbacks"><b id="nCallbacks">0</b><span>to call back</span></div>
+      <div class="tile"><b id="nVisits">0</b><span id="visitLabel">upcoming visits</span></div>
+      <div class="tile"><b id="nWeek">0</b><span>calls in 7 days</span></div>
+      <div class="tile"><b id="nMinutes">0</b><span id="minLabel">minutes this month</span><div class="meter" id="meter"><i id="meterBar" style="width:0"></i></div></div>
+    </div>
+
+    <section style="margin-top:28px">
+      <h2>Call back <span class="count" id="cbCount"></span></h2>
+      <div class="list" id="callbacks"></div>
+    </section>
+
+    <section style="margin-top:28px">
+      <h2>Upcoming visits <span class="count" id="vCount"></span></h2>
+      <div class="list" id="visits"></div>
+    </section>
+
+    <section style="margin-top:28px">
+      <h2>Recent calls <span class="count" id="cCount"></span></h2>
+      <div class="list" id="calls"></div>
+    </section>
+
+    <section style="margin-top:28px">
+      <details id="doneBox"><summary id="doneSummary">Done</summary><div class="list" id="done" style="margin-top:10px"></div></details>
+    </section>
+
+    <p class="foot" id="foot" style="margin-top:32px"></p>
+  </div>
+</main>
+<div class="toast" id="toast" hidden role="status"><span id="toastMsg"></span><button type="button" id="undo">Undo</button></div>
+
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const id = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+  const key = new URLSearchParams(location.search).get('key') || '';
+  const RANK = { Emergency: 0, Priority: 1, Routine: 2 };
+  let data = null, tz = 'America/New_York', timer = null, lastUndo = null;
+
+  function el(tag, attrs = {}, ...kids) {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+      if (k === 'text') n.textContent = v; else if (k === 'class') n.className = v;
+      else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else if (v != null) n.setAttribute(k, v);
+    }
+    for (const k of kids) if (k != null) n.append(k);
+    return n;
+  }
+  const pretty = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ''); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : (p || ''); };
+  const when = (iso) => {
+    const d = new Date(iso); if (isNaN(d)) return '';
+    const day = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' }).format(d);
+    const t = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(d);
+    return `${day}, ${t}`;
+  };
+  const dur = (s) => s == null ? '' : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  async function api(method, path, body) {
+    const r = await fetch(`${path}${path.includes('?') ? '&' : '?'}key=${encodeURIComponent(key)}`, {
+      method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store',
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(j.error || `Something went wrong (${r.status}). Try again in a minute.`); e.status = r.status; throw e; }
+    return j;
+  }
+
+  async function load() {
+    try {
+      data = await api('GET', `/api/owner/${encodeURIComponent(id)}`);
+      tz = data.shop.timezone || tz;
+      render();
+      $('#error').hidden = true; $('#app').hidden = false;
+    } catch (e) {
+      if (e.status === 404) {
+        $('#shop').textContent = 'Link not recognized';
+        $('#sub').textContent = '';
+        $('#error').textContent = 'This dashboard link is not valid. Open the "Open your dashboard" button in your latest email from AfterHours Desk.';
+        $('#error').hidden = false; $('#app').hidden = true;
+        return;
+      }
+      $('#foot').textContent = `Couldn't refresh: ${e.message}`;
+    }
+    clearTimeout(timer); timer = setTimeout(load, 60_000);
+  }
+
+  async function setDone(item, done) {
+    item.done_at = done ? new Date().toISOString() : null; render();
+    try {
+      await api('POST', `/api/owner/${encodeURIComponent(id)}/items/${encodeURIComponent(item.id)}`, { done });
+      if (done) toast(`Marked done: ${item.caller_name || 'caller'}`, () => setDone(item, false));
+    } catch (e) { item.done_at = done ? null : new Date().toISOString(); render(); toast(e.message); }
+  }
+
+  function toast(msg, undo) {
+    $('#toastMsg').textContent = msg; lastUndo = undo || null; $('#undo').hidden = !undo; $('#toast').hidden = false;
+    clearTimeout(toast.t); toast.t = setTimeout(() => { $('#toast').hidden = true; }, 5000);
+  }
+  $('#undo').addEventListener('click', () => { $('#toast').hidden = true; if (lastUndo) lastUndo(); });
+
+  function itemCard(b, { done = false } = {}) {
+    const isVisit = b.kind === 'booking';
+    const cls = ['card', done ? 'done-card' : '', !isVisit && b.urgency === 'Emergency' ? 'emergency' : '', !isVisit && b.urgency === 'Priority' ? 'urgent' : ''].filter(Boolean).join(' ');
+    return el('div', { class: cls },
+      el('div', {},
+        el('div', { class: 'meta' }, isVisit ? el('span', { class: 'slot', text: b.slot_label || when(b.slot_start) }) : el('span', { class: `pill ${b.urgency || 'Routine'}`, text: b.urgency || 'Routine' }), isVisit ? null : document.createTextNode(when(b.created_at))),
+        el('div', { class: 'who', text: b.caller_name || 'Unknown caller' }),
+        b.address ? el('div', { class: 'meta', text: b.address }) : null),
+      el('div', { class: 'meta', style: 'text-align:right;font-variant-numeric:tabular-nums', text: pretty(b.caller_phone) }),
+      el('p', { class: 'issue', text: b.issue || '' }),
+      el('div', { class: 'actions' },
+        b.caller_phone && !done ? el('a', { class: 'btn call', href: `tel:${b.caller_phone}`, text: `Call ${b.caller_name ? b.caller_name.split(' ')[0] : 'back'}` }) : null,
+        el('button', { class: 'btn ghost', type: 'button', text: done ? 'Move back' : (isVisit ? 'Mark confirmed' : 'Mark done'), onclick: () => setDone(b, !done) })));
+  }
+
+  function render() {
+    const { shop, usage, items, calls } = data;
+    document.title = `${shop.business} · AfterHours Desk`;
+    $('#shop').textContent = shop.business;
+    $('#sub').replaceChildren(document.createTextNode('Your AI receptionist: '), el('b', { text: pretty(shop.phoneNumber) || 'number coming soon' }), shop.status === 'active' ? el('span', { class: 'live', text: 'Live' }) : null);
+
+    const now = Date.now();
+    const callbacks = items.filter((b) => b.kind === 'message' && !b.done_at).sort((a, b) => (RANK[a.urgency] ?? 3) - (RANK[b.urgency] ?? 3) || b.created_at.localeCompare(a.created_at));
+    const visits = items.filter((b) => b.kind === 'booking' && !b.done_at && Date.parse(b.slot_start) >= now - 2 * 3_600_000).sort((a, b) => a.slot_start.localeCompare(b.slot_start));
+    const done = items.filter((b) => b.done_at).sort((a, b) => b.done_at.localeCompare(a.done_at));
+    const week = calls.filter((c) => Date.parse(c.created_at) >= now - 7 * 86_400_000).length;
+
+    $('#nCallbacks').textContent = callbacks.length; $('#tCallbacks').classList.toggle('hot', callbacks.length > 0);
+    $('#nVisits').textContent = visits.length; $('#visitLabel').textContent = visits.length === 1 ? 'upcoming visit' : 'upcoming visits';
+    $('#nWeek').textContent = week;
+    $('#nMinutes').textContent = usage.minutes;
+    $('#minLabel').textContent = usage.included ? `of ${usage.included} minutes this month` : 'minutes this month';
+    const share = usage.included ? usage.minutes / usage.included : 0;
+    $('#meter').hidden = !usage.included;
+    $('#meter').className = `meter${share >= 1 ? ' over' : share >= 0.8 ? ' warn' : ''}`;
+    $('#meterBar').style.width = `${Math.min(100, Math.round(share * 100))}%`;
+
+    $('#cbCount').textContent = callbacks.length ? `${callbacks.length} waiting` : '';
+    $('#callbacks').replaceChildren(...(callbacks.length ? callbacks.map((b) => itemCard(b)) : [el('p', { class: 'empty', text: 'Nobody is waiting for a call back. Messages your receptionist takes show up here.' })]));
+    $('#vCount').textContent = visits.length ? String(visits.length) : '';
+    $('#visits').replaceChildren(...(visits.length ? visits.map((b) => itemCard(b)) : [el('p', { class: 'empty', text: 'No visits booked yet. When your receptionist books one, it shows up here with the time window.' })]));
+
+    $('#cCount').textContent = calls.length ? `last ${Math.min(calls.length, 100)}` : '';
+    $('#calls').replaceChildren(...(calls.length ? calls.slice(0, 30).map((c) => el('article', { class: 'call-row' },
+      el('header', {}, el('b', { text: pretty(c.caller_phone) || 'Unknown caller' }), el('span', { text: [when(c.created_at), dur(c.duration_s)].filter(Boolean).join(' · ') })),
+      c.late ? el('p', { class: 'late', text: 'This report arrived late. If they wanted a booking, call to confirm.' }) : null,
+      el('p', { text: c.summary || 'No summary was recorded for this call.' }),
+      c.transcript ? el('details', {}, el('summary', { text: 'Read the conversation' }), el('pre', { text: c.transcript })) : null))
+      : [el('p', { class: 'empty', text: 'No calls yet. Call your receptionist yourself to see how a call shows up here.' })]));
+
+    $('#doneSummary').textContent = `Done (${done.length})`;
+    $('#doneBox').hidden = !done.length;
+    $('#done').replaceChildren(...done.map((b) => itemCard(b, { done: true })));
+
+    $('#foot').textContent = `Updated ${new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' }).format(new Date())}. Refreshes every minute. Bookmark this page to come back.`;
+  }
+
+  if (!id || !key) {
+    $('#shop').textContent = 'Link not recognized'; $('#sub').textContent = '';
+    $('#error').textContent = 'This dashboard link is incomplete. Open the "Open your dashboard" button in your latest email from AfterHours Desk.';
+    $('#error').hidden = false;
+  } else load();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && data) load(); });
+})();
+</script>
+</body>
+</html>

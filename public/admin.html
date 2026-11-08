@@ -211,6 +211,23 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     return box;
   }
 
+  // The owner's private dashboard link: copy it to send by text, or email them the morning report now.
+  function ownerLinkTools(c, url) {
+    const note = el('span', { class: 'hint', text: '' });
+    const copy = el('button', { class: 'btn ghost', type: 'button', text: 'Copy link', onclick: async () => {
+      try { await navigator.clipboard.writeText(url); note.textContent = 'Copied. Text it to the owner.'; }
+      catch { note.textContent = url; }
+    } });
+    const send = el('button', { class: 'btn ghost', type: 'button', text: 'Email morning report now', onclick: async (ev) => {
+      const b = ev.currentTarget; b.disabled = true;
+      try { const r = await api('POST', `/api/admin/clients/${encodeURIComponent(c.id)}/send-report`); note.textContent = `Sent to ${c.email}: ${r.calls} calls, ${r.booked} booked, ${r.callbacks} to call back (last 24 hours).`; }
+      catch (e) { note.textContent = e.message; }
+      b.disabled = false;
+    } });
+    const actions = el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' }, copy, send);
+    return el('div', { style: 'display:grid;gap:6px' }, actions, note);
+  }
+
   async function act(ev, c, action, doneMsg) {
     const b = ev.currentTarget; b.disabled = true; b.textContent = 'Working…';
     $('#appOk').hidden = true;
@@ -225,7 +242,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     selected = id;
     const box = $('#detail');
     try {
-      const { client: c, usage, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
+      const { client: c, usage, ownerUrl, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
       box.textContent = '';
       const d = c.details || {};
       box.append(
@@ -237,7 +254,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Fees' }), el('dd', { text: [d.fee, d.afterfee].filter(Boolean).join(' · ') || '—' }),
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
           el('dt', { text: 'This month' }), el('dd', {}, usageCell(usage)),
-          el('dt', { text: 'Vapi assistant' }), el('dd', { class: 'mono', text: c.vapiAssistantId || '—' })),
+          el('dt', { text: 'Vapi assistant' }), el('dd', { class: 'mono', text: c.vapiAssistantId || '—' }),
+          ...(ownerUrl ? [el('dt', { text: 'Owner dashboard' }), el('dd', {}, ownerLinkTools(c, ownerUrl))] : [])),
         el('h3', { text: `Bookings and messages (${bookings.length})` }),
         bookings.length ? el('div', { class: 'tablebox' }, el('table', {},
           el('thead', {}, el('tr', {}, ...['Type', 'Caller', 'Issue', 'Urgency', 'Window', 'When'].map((h) => el('th', { text: h })))),

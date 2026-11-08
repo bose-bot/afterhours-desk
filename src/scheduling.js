@@ -3,7 +3,7 @@
 const pad = (n) => String(n).padStart(2, '0');
 
 // The wall-clock parts of a UTC instant in a given time zone.
-function zonedParts(date, timeZone) {
+export function zonedParts(date, timeZone) {
   const f = new Intl.DateTimeFormat('en-US', {
     timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', second: '2-digit', weekday: 'short',

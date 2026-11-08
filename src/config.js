@@ -51,6 +51,8 @@ export function loadConfig(env = process.env) {
     includedMinutes: int(env.INCLUDED_MINUTES, 300),
     // How often to fetch call reports from Vapi that never reached this server. 0 turns it off.
     recoverEveryMinutes: int(env.RECOVER_EVERY_MINUTES, 10),
+    // Local hour (0-11) in each shop's time zone to email the overnight report. "off" turns it off.
+    morningReportHour: /^off$/i.test(env.MORNING_REPORT_HOUR || '') ? null : Math.min(11, Math.max(0, int(env.MORNING_REPORT_HOUR, 7))),
 
     mail: {
       // Resend's HTTP API works on hosts that block SMTP ports. Takes priority over SMTP when set.

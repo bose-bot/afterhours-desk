@@ -58,6 +58,7 @@ const MIGRATIONS = [
   'ALTER TABLE calls ADD COLUMN duration_s INTEGER',  // how long the call lasted
   'ALTER TABLE calls ADD COLUMN cost REAL',
   'ALTER TABLE calls ADD COLUMN source TEXT',
+  'ALTER TABLE bookings ADD COLUMN done_at TEXT',     // when the owner marked a booking or callback as done
 ];
 
 // ---- Drivers: all(sql, params) -> rows, run(sql, params), close(). SQL uses ? placeholders. ----
@@ -70,7 +71,7 @@ async function sqliteDriver(path) {
   return {
     kind: 'sqlite',
     async all(sql, params = []) { return db.prepare(sql).all(...params); },
-    async run(sql, params = []) { db.prepare(sql).run(...params); },
+    async run(sql, params = []) { return db.prepare(sql).run(...params); },
     isUniqueViolation: (e) => String(e?.message).includes('UNIQUE'),
     async close() { db.close(); },
   };
@@ -95,7 +96,7 @@ async function postgresDriver(url) {
   return {
     kind: 'postgres',
     async all(sql, params = []) { return (await pool.query(toPg(sql), params)).rows; },
-    async run(sql, params = []) { await pool.query(toPg(sql), params); },
+    async run(sql, params = []) { return pool.query(toPg(sql), params); },
     isUniqueViolation: (e) => e?.code === '23505',
     async close() { await pool.end(); },
   };
@@ -185,6 +186,12 @@ export async function openDb(target) {
 
     async listBookings(clientId) {
       return d.all('SELECT * FROM bookings WHERE client_id = ? ORDER BY created_at DESC', [clientId]);
+    },
+
+    // Marks a booking or callback done (or not). Scoped to the client, so one shop can't touch another's.
+    async setBookingDone(clientId, id, done) {
+      const r = await d.run('UPDATE bookings SET done_at = ? WHERE id = ? AND client_id = ?', [done ? now() : null, id, clientId]);
+      return (r?.changes ?? r?.rowCount ?? 0) > 0;
     },
 
     async saveCall({ id, clientId, callerPhone, summary, transcript, endedReason, durationS, cost, source, createdAt }) {

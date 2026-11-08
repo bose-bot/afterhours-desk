@@ -8,6 +8,8 @@ import { WebsiteError } from './website.js';
 import { createWebhookHandler, isAuthorized } from './webhook.js';
 import { usageThisMonth } from './usage.js';
 import { recoverCalls } from './recover.js';
+import { ownerKeyValid, ownerUrl } from './owner.js';
+import { sendReport } from './report.js';
 import { timingSafeEqual } from 'node:crypto';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
@@ -120,6 +122,14 @@ export function createApp(deps) {
     const clients = (await db.listClients()).filter((c) => c.status !== 'demo');
     res.json({ clients: await Promise.all(clients.map(async (c) => ({ ...c, usage: await usageOf(c) }))) });
   }));
+  // Sends the morning report right now, covering the last 24 hours, even if nothing came in.
+  admin.post('/clients/:id/send-report', wrap(async (req, res) => {
+    const c = await db.getClient(req.params.id);
+    if (!c) return res.status(404).json({ error: 'No client with that id.' });
+    if (c.status !== 'active') return res.status(409).json({ error: 'Reports are only sent for live shops.' });
+    const r = await sendReport(c, deps, { since: new Date(Date.now() - 24 * 3_600_000).toISOString(), force: true });
+    res.json({ ok: true, ...r });
+  }));
   admin.post('/recover-calls', async (_req, res) => {
     try { res.json({ ok: true, ...(await recoverCalls(deps)) }); }
     catch (e) { logger.error(`[recover] ${e.message}`); res.status(502).json({ error: e.message }); }
@@ -137,7 +147,7 @@ export function createApp(deps) {
   admin.get('/clients/:id', wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'not found' });
-    res.json({ client: c, usage: await usageOf(c), bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
+    res.json({ client: c, usage: await usageOf(c), ownerUrl: c.status === 'demo' ? '' : ownerUrl(config, c), bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
   }));
   const startSetup = (allowed) => wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);
@@ -162,6 +172,38 @@ export function createApp(deps) {
     catch (e) { res.status(502).json({ error: e.message }); }
   });
   app.use('/api/admin', admin);
+
+  // ---- Shop owner dashboard: /my/<client id>?key=<private key>. Anyone without the key gets a plain 404.
+  const ownerGate = wrap(async (req, res, next) => {
+    const c = ownerKeyValid(config, req.params.id, String(req.query.key || req.get('x-owner-key') || '')) ? await db.getClient(req.params.id) : null;
+    if (!c || c.status === 'demo') return res.status(404).json({ error: 'This dashboard link is not valid. Use the link from your latest email.' });
+    req.client = c; next();
+  });
+  app.get('/my/:id', (_req, res) => {
+    res.set({ 'Referrer-Policy': 'no-referrer', 'X-Robots-Tag': 'noindex', 'Cache-Control': 'no-store' });
+    res.sendFile(join(PUBLIC_DIR, 'my.html'));
+  });
+  app.get('/api/owner/:id', ownerGate, wrap(async (req, res) => {
+    const c = req.client, cutoff = Date.now() - 45 * 86_400_000;
+    const recent = (row) => Date.parse(row.created_at) >= cutoff;
+    const items = (await db.listBookings(c.id)).filter((b) => recent(b) || (b.kind === 'booking' && Date.parse(b.slot_start) >= Date.now()));
+    const calls = (await db.listCalls(c.id)).filter(recent).slice(0, 100).map((k) => ({
+      id: k.id, caller_phone: k.caller_phone, summary: k.summary, transcript: (k.transcript || '').slice(0, 20_000),
+      duration_s: k.duration_s, created_at: k.created_at, late: k.source === 'recovered',
+    }));
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      shop: { business: c.business, contact: c.contact, phoneNumber: c.phoneNumber, status: c.status, timezone: c.details?.schedule?.timezone || config.timezone },
+      usage: await usageOf(c),
+      items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at })),
+      calls,
+    });
+  }));
+  app.post('/api/owner/:id/items/:itemId', ownerGate, wrap(async (req, res) => {
+    const ok = await db.setBookingDone(req.client.id, req.params.itemId, req.body?.done !== false);
+    if (!ok) return res.status(404).json({ error: 'That booking or message was not found.' });
+    res.json({ ok: true });
+  }));
 
   app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
 

@@ -21,6 +21,8 @@ Sign-up form ──► Vapi assistant created ──► local phone number assig
 - **A person if the AI can't answer.** Each shop's number has a fallback: if Vapi can't start the assistant, the call rings the on-call number, then the office, then the owner's mobile.
 - **Honest.** The greeting says it's the virtual assistant and that calls are recorded. It never claims to be human, never quotes prices the shop didn't list, and never takes payment details.
 - **Call summaries.** After every call the shop gets the bookings, messages and Vapi's summary by email.
+- **Owner dashboard.** Each shop gets a private link (in every email, and copyable from the admin page) to a phone-friendly page with callbacks waiting (urgent first), upcoming visits, recent calls with summaries and transcripts, and minutes used. Owners tap Call or Mark done; done items can be moved back.
+- **Morning report.** At 7 AM in each shop's time zone, the owner gets one email covering everything since the last report: who to call back, what's booked, how many calls. A quiet night sends nothing.
 - **No lost reports.** If the server was asleep or restarting when a call ended, it fetches the missed reports from Vapi every 10 minutes and still emails the shop, once.
 - **Minutes and costs.** Every call's length and Vapi cost are stored. The admin page shows each shop's minutes this month against its plan, and you get an email when a shop reaches 80% and 100% of its included minutes. Calls keep being answered past the limit.
 - **Protected from abuse.** Honeypot field, per-IP rate limit, a hard cap on clients, and an optional manual-approval mode.
@@ -35,7 +37,7 @@ git clone https://github.com/<you>/afterhours-desk.git
 cd afterhours-desk
 npm install
 cp .env.example .env      # then fill in the required values
-npm test                  # 62 tests, uses a fake Vapi, no account needed
+npm test                  # 69 tests, uses a fake Vapi, no account needed
 npm start
 ```
 
@@ -88,6 +90,7 @@ Click the button, paste the same keys on the setup screen, and deploy. It create
 | `VAPI_MODEL`, `VAPI_VOICE_*` | Pick the model and voice. Empty voice uses Vapi's default. |
 | `OPERATOR_EMAIL` | Where new-client, failure and minute alerts go. |
 | `INCLUDED_MINUTES` | Call minutes in a plan each month (default 300, as on the website). Alerts at 80% and 100%. `0` turns them off. |
+| `MORNING_REPORT_HOUR` | Local hour for the overnight email (default 7). `off` turns it off. |
 | `RECOVER_EVERY_MINUTES` | How often to fetch call reports that never reached the server (default 10). `0` turns it off. |
 
 Every Vapi phone minute and every number costs money on your Vapi account. Set `MAX_CLIENTS`, and keep `approval` mode on until you're charging clients.
@@ -104,6 +107,7 @@ All admin calls need `Authorization: Bearer $ADMIN_TOKEN`. If you didn't set `AD
 | `POST /api/admin/clients/:id/retry` | Retry a failed setup. |
 | `POST /api/admin/clients/:id/refresh-number` | Fetch a number that wasn't assigned yet at setup. |
 | `POST /api/admin/clients/:id/update-script` | Send the latest script, greeting, tools and phone fallback to a live shop. |
+| `POST /api/admin/clients/:id/send-report` | Email that shop its report for the last 24 hours, right now. |
 | `POST /api/admin/recover-calls` | Fetch any call reports from Vapi that never arrived, right now. |
 
 ```bash
