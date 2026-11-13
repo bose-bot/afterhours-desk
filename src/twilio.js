@@ -16,14 +16,17 @@ export function createTwilio({ accountSid, authToken, fetchImpl = globalThis.fet
     return j;
   }
   return {
-    // A US local number, in the area code when one is free there, otherwise anywhere in the US.
-    async buyUsNumber({ areaCode, friendlyName }) {
-      const search = async (q) => (await call('GET', `/AvailablePhoneNumbers/US/Local.json?${new URLSearchParams({ VoiceEnabled: 'true', PageSize: '1', ...q })}`)).available_phone_numbers?.[0]?.phone_number;
+    // A local number in a country: in the area code when one is free there (US, Canada), otherwise anywhere
+    // in the country. UK and Australian numbers need an approved regulatory bundle (and address) on file.
+    async buyNumber({ country = 'US', areaCode, friendlyName, bundleSid, addressSid }) {
+      const search = async (q) => (await call('GET', `/AvailablePhoneNumbers/${country}/Local.json?${new URLSearchParams({ VoiceEnabled: 'true', PageSize: '1', ...q })}`)).available_phone_numbers?.[0]?.phone_number;
       const number = (areaCode && await search({ AreaCode: areaCode })) || await search({});
-      if (!number) throw new Error('Twilio has no US local numbers available right now.');
-      const bought = await call('POST', '/IncomingPhoneNumbers.json', { PhoneNumber: number, FriendlyName: friendlyName.slice(0, 64) });
+      if (!number) throw new Error(`Twilio has no local numbers available in ${country} right now.`);
+      const bought = await call('POST', '/IncomingPhoneNumbers.json', { PhoneNumber: number, FriendlyName: friendlyName.slice(0, 64),
+        ...(bundleSid ? { BundleSid: bundleSid } : {}), ...(addressSid ? { AddressSid: addressSid } : {}) });
       return { sid: bought.sid, number: bought.phone_number || number };
     },
+    buyUsNumber(opts) { return this.buyNumber({ ...opts, country: 'US' }); },
     release: (sid) => call('DELETE', `/IncomingPhoneNumbers/${encodeURIComponent(sid)}.json`),
   };
 }

@@ -146,8 +146,7 @@ export function createApp(deps) {
     res.json({ busiestToday: await busiestToday(db), lines: config.vapi.concurrency });
   }));
   admin.post('/clients/:id/attach-number', wrap(async (req, res) => {
-    const { normalizePhone } = await import('./phone.js');
-    try { res.json({ client: await attachIndianNumber(req.params.id, normalizePhone(req.body?.number, 'IN'), deps) }); }
+    try { res.json({ client: await attachIndianNumber(req.params.id, req.body?.number, deps) }); }
     catch (e) { res.status(e.status || 502).json({ error: e.message }); }
   }));
   const usageOf = (c) => usageThisMonth(db, c, { now: (deps.now || (() => new Date()))(), timezone: config.timezone, includedMinutes: config.includedMinutes });

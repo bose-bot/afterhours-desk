@@ -49,7 +49,7 @@ test('an Indian shop gets an AC-service script in Hindi and English, Indian safe
     assert.match(prompt, /Callers may speak Hindi, English or a mix/);
     assert.match(prompt, /mera AC cooling nahi kar raha/);
     assert.match(prompt, /annual maintenance contracts/);
-    assert.ok(t.mailer.sent.some((m) => /Attach an Indian number: CoolBreeze/.test(m.subject)));
+    assert.ok(t.mailer.sent.some((m) => /Attach a number: CoolBreeze/.test(m.subject)));
   } finally { await t.close(); }
 });
 
@@ -80,7 +80,7 @@ test('the operator attaches a +91 number from the Indian provider, and the owner
     assert.equal(phone.numberE164CheckEnabled, false);
     assert.equal(phone.fallbackDestination.number, '+919123456789');
     const welcome = t.mailer.sent.find((m) => m.to === 'ravi@coolbreeze.example' && /is live/.test(m.subject));
-    assert.match(welcome.html, /\+91 22400 01234/);
+    assert.match(welcome.html, /\+91 22 4000 1234/);
     assert.equal((await t.req('POST', `/api/admin/clients/${id}/attach-number`, { ...auth, body: { number: '022 4000 1235' } })).status, 409, 'only once');
   } finally { await t.close(); }
 });

@@ -151,7 +151,8 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     for (const k of kids) if (k != null) n.append(k);
     return n;
   }
-  const pretty = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ''); if (m) return `(${m[1]}) ${m[2]}-${m[3]}`; const i = /^\+91(\d{5})(\d{5})$/.exec(p || ''); return i ? `+91 ${i[1]} ${i[2]}` : (p || ''); };
+  const INTL = { '91': [5, 5], '44': [4, 6], '61': [3, 3, 3], '971': [2, 3, 4], '966': [2, 3, 4] }; const intl = (n) => { const m = /^\+(91|44|61|971|966)(\d+)$/.exec(n || ''); if (!m) return ''; let d = m[2], out = []; for (const k of INTL[m[1]]) { out.push(d.slice(0, k)); d = d.slice(k); } if (d) out.push(d); return `+${m[1]} ${out.filter(Boolean).join(' ')}`; };
+  const pretty = (p) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p || ''); if (m) return `(${m[1]}) ${m[2]}-${m[3]}`; return intl(p) || (p || ''); };
   const when = (iso) => {
     const d = new Date(iso); if (isNaN(d)) return '';
     const day = new Intl.DateTimeFormat(locale, { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' }).format(d);

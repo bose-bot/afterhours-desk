@@ -1,3 +1,4 @@
+import { COUNTRY_CODES } from './countries.js';
 // Reads settings from environment variables. See .env.example for every option.
 
 function bool(v, fallback) {
@@ -36,6 +37,23 @@ export function loadConfig(env = process.env) {
 
     // Twilio, for US numbers once Vapi's 10 free numbers are used up. NUMBER_SOURCE=twilio uses it for every shop.
     twilio: { accountSid: env.TWILIO_ACCOUNT_SID || '', authToken: env.TWILIO_AUTH_TOKEN || '', always: env.NUMBER_SOURCE === 'twilio' },
+
+    // Per-country settings, named with the two-letter code: VAPI_SIP_CREDENTIAL_AE (a licensed local
+    // provider's SIP trunk in Vapi), TWILIO_BUNDLE_SID_GB / TWILIO_ADDRESS_SID_GB (Twilio's approved
+    // regulatory bundle and address), STRIPE_PRICE_ID_CA (a price in that country's currency).
+    countries: Object.fromEntries(COUNTRY_CODES.map((cc) => [cc, {
+      sipCredentialId: env[`VAPI_SIP_CREDENTIAL_${cc}`] || (cc === 'IN' ? env.VAPI_IN_SIP_CREDENTIAL_ID || '' : ''),
+      twilioBundleSid: env[`TWILIO_BUNDLE_SID_${cc}`] || '',
+      twilioAddressSid: env[`TWILIO_ADDRESS_SID_${cc}`] || '',
+      stripePriceId: env[`STRIPE_PRICE_ID_${cc}`] || '',
+    }])),
+    // A voice per caller language: VAPI_VOICE_AR_PROVIDER / VAPI_VOICE_AR_ID, VAPI_VOICE_EN_FR_…, VAPI_VOICE_HI_EN_…
+    voiceFor: (lang) => {
+      const k = String(lang || '').toUpperCase().replace(/-/g, '_');
+      const provider = env[`VAPI_VOICE_${k}_PROVIDER`] || (k === 'HI_EN' ? env.VAPI_IN_VOICE_PROVIDER : '');
+      const voiceId = env[`VAPI_VOICE_${k}_ID`] || (k === 'HI_EN' ? env.VAPI_IN_VOICE_ID : '');
+      return provider && voiceId ? { provider, voiceId } : null;
+    },
 
     // India: numbers come from an Indian licensed provider over SIP, set up once in Vapi as a credential.
     india: {

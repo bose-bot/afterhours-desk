@@ -137,8 +137,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     for (const c of kids) if (c != null) n.append(c);
     return n;
   };
-  const LABEL = { active: 'Live', pending_approval: 'Needs approval', provisioning: 'Setting up…', failed: 'Setup failed', paused: 'Paused', needs_number: 'Needs +91 number' };
-  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); if (m) return `(${m[1]}) ${m[2]}-${m[3]}`; const i = /^\+91(\d{5})(\d{5})$/.exec(n || ''); return i ? `+91 ${i[1]} ${i[2]}` : (n || '—'); };
+  const LABEL = { active: 'Live', pending_approval: 'Needs approval', provisioning: 'Setting up…', failed: 'Setup failed', paused: 'Paused', needs_number: 'Needs number' };
+  const INTL = { '91': [5, 5], '44': [4, 6], '61': [3, 3, 3], '971': [2, 3, 4], '966': [2, 3, 4] }; const intl = (n) => { const m = /^\+(91|44|61|971|966)(\d+)$/.exec(n || ''); if (!m) return ''; let d = m[2], out = []; for (const k of INTL[m[1]]) { out.push(d.slice(0, k)); d = d.slice(k); } if (d) out.push(d); return `+${m[1]} ${out.filter(Boolean).join(' ')}`; };
+  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); if (m) return `(${m[1]}) ${m[2]}-${m[3]}`; return intl(n) || (n || '—'); };
   const when = (iso) => iso ? new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 
   let token = '';
@@ -219,11 +220,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     return box;
   }
 
-  // India: paste the +91 number from your licensed provider; it's connected to this shop's assistant.
+  // India, UAE, Saudi Arabia (licensed provider) or UK/Australia (bought in Twilio): paste the number; it's connected to this shop's assistant.
   function attachTools(c) {
-    const input = el('input', { id: `attach-${c.id}`, type: 'tel', placeholder: '+91 98765 43210', 'aria-label': 'Indian number', style: 'min-height:42px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;padding:6px 12px' });
-    const note = el('span', { class: 'hint', text: 'Get the number from your Indian provider first.' });
-    const btn = el('button', { class: 'btn', type: 'button', text: 'Attach Indian number', onclick: async (ev) => {
+    const input = el('input', { id: `attach-${c.id}`, type: 'tel', placeholder: '+44 20 7946 0958', 'aria-label': 'Phone number with country code', style: 'min-height:42px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;padding:6px 12px' });
+    const note = el('span', { class: 'hint', text: 'Get the number from the local provider (India, UAE, Saudi) or buy it in Twilio (UK, Australia) first.' });
+    const btn = el('button', { class: 'btn', type: 'button', text: 'Attach number', onclick: async (ev) => {
       const b = ev.currentTarget; b.disabled = true;
       try { await api('POST', `/api/admin/clients/${encodeURIComponent(c.id)}/attach-number`, { number: input.value }); note.textContent = 'Attached. The welcome email is on its way.'; await load(); }
       catch (e) { note.textContent = e.message; b.disabled = false; }
@@ -275,7 +276,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Country' }), el('dd', { text: d.country === 'IN' ? 'India' : 'United States' }),
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
           el('dt', { text: 'Billing' }), el('dd', { text: d.billing ? `${d.billing.status} (${d.billing.provider === 'razorpay' ? 'Razorpay' : 'Stripe'})` : 'No subscription yet' }),
-          ...(c.status === 'needs_number' ? [el('dt', { text: 'Indian number' }), el('dd', {}, attachTools(c))] : []),
+          ...(c.status === 'needs_number' ? [el('dt', { text: 'Phone number' }), el('dd', {}, attachTools(c))] : []),
           el('dt', { text: 'This month' }), el('dd', {}, usageCell(usage)),
           el('dt', { text: 'Vapi assistant' }), el('dd', { class: 'mono', text: c.vapiAssistantId || '—' }),
           el('dt', { text: 'Scheduling tool' }), el('dd', { text: integration ? `${integration.name}${integration.account ? ` · ${integration.account}` : ''}` : 'Not connected (the owner connects it from their dashboard)' }),

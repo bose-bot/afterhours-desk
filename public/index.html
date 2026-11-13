@@ -555,19 +555,20 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     <div class="form-shell">
   <form class="fs" id="signupForm" novalidate>
     <p class="hp"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></p>
-    <div class="field full"><label for="f_country">Country</label><select id="f_country" name="country"><option value="US">United States</option><option value="IN">India</option></select></div>
+    <div class="field full"><label for="f_country">Country</label><select id="f_country" name="country"><option value="US">United States</option><option value="CA">Canada</option><option value="GB">United Kingdom</option><option value="AU">Australia</option><option value="AE">United Arab Emirates</option><option value="SA">Saudi Arabia</option><option value="IN">India</option></select></div>
+    <div class="field full" id="languageField" hidden><label for="f_language">Callers speak</label><select id="f_language" name="language"></select><span class="hint">The receptionist listens and answers in this language.</span></div>
     <div class="field"><label for="f_business">Business name</label><input id="f_business" name="business" required maxlength="80"></div>
     <div class="field"><label for="f_contact">Your name</label><input id="f_contact" name="contact" required maxlength="80" autocomplete="name"></div>
     <div class="field"><label for="f_phone">Your mobile</label><input id="f_phone" name="phone" type="tel" required autocomplete="tel" placeholder="(513) 555-0142"><span class="hint" id="phoneHint">We pick a local number with the same area code.</span></div>
     <div class="field"><label for="f_email">Email</label><input id="f_email" name="email" type="email" required autocomplete="email"><span class="hint">Bookings and call summaries go here.</span></div>
     <div class="field full"><label for="f_area">Service area</label><input id="f_area" name="area" maxlength="300" placeholder="Cities or ZIP codes you serve"></div>
-    <div class="field"><label for="f_workDays">Days you take appointments</label><select id="f_workDays" name="workDays"><option value="mon-fri">Monday to Friday</option><option value="mon-sat">Monday to Saturday</option><option value="every-day">Every day</option></select></div>
-    <div class="field"><label for="f_timezone">Time zone</label><select id="f_timezone" name="timezone"><option value="Asia/Kolkata" hidden>India (IST)</option><option value="America/New_York">Eastern</option><option value="America/Chicago">Central</option><option value="America/Denver">Mountain</option><option value="America/Phoenix">Arizona</option><option value="America/Los_Angeles">Pacific</option><option value="America/Anchorage">Alaska</option><option value="Pacific/Honolulu">Hawaii</option></select></div>
+    <div class="field"><label for="f_workDays">Days you take appointments</label><select id="f_workDays" name="workDays"><option value="mon-fri">Monday to Friday</option><option value="mon-sat">Monday to Saturday</option><option value="sun-thu">Sunday to Thursday</option><option value="sat-thu">Saturday to Thursday</option><option value="every-day">Every day</option></select></div>
+    <div class="field"><label for="f_timezone">Time zone</label><select id="f_timezone" name="timezone"><option value="America/New_York">Eastern</option><option value="America/Chicago">Central</option><option value="America/Denver">Mountain</option><option value="America/Phoenix">Arizona</option><option value="America/Los_Angeles">Pacific</option><option value="America/Anchorage">Alaska</option><option value="Pacific/Honolulu">Hawaii</option></select></div>
     <div class="field"><label for="f_dayStart">First appointment</label><input id="f_dayStart" name="dayStart" type="time" value="08:00" step="1800"></div>
     <div class="field"><label for="f_dayEnd">Last appointment ends</label><input id="f_dayEnd" name="dayEnd" type="time" value="17:00" step="1800"><span class="hint">Visits are booked in 2-hour windows.</span></div>
     <div class="field"><label for="f_office">Office number</label><input id="f_office" name="office" type="tel"></div>
     <div class="field"><label for="f_oncall">After-hours on-call number</label><input id="f_oncall" name="oncall" type="tel"></div>
-    <div class="field" id="gaslineField" hidden><label for="f_gasline">Piped gas company emergency number</label><input id="f_gasline" name="gasline" type="tel" placeholder="e.g. 1800 22 1166"><span class="hint">Optional. Callers who smell gas are told to call 112, or this number. Without it we give the LPG helpline, 1906.</span></div>
+    <div class="field" id="gaslineField" hidden><label for="f_gasline" id="gaslineLabel">Gas emergency number</label><input id="f_gasline" name="gasline" type="tel"><span class="hint" id="gaslineHint"></span></div>
     <div class="field"><label for="f_fee">Service call fee</label><input id="f_fee" name="fee" maxlength="120" placeholder="$89, waived with repair"></div>
     <div class="field"><label for="f_afterfee">After-hours fee</label><input id="f_afterfee" name="afterfee" maxlength="120" placeholder="+$75"></div>
     <div class="field full"><label for="f_services">Services you offer</label><input id="f_services" name="services" maxlength="400" placeholder="Furnace &amp; AC repair, tune-ups, heat pumps, new system estimates"></div>
@@ -897,29 +898,57 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
 <script>
 (() => {
   const form = document.getElementById('signupForm');
-  // India: Indian phone format, IST, AC-service examples and the gas helpline field.
+  // Each country: phone format, time zones, languages, work week, gas line, and example placeholders.
   (() => {
-    const c = document.getElementById('f_country'), tz = document.getElementById('f_timezone');
-    const ph = document.getElementById('f_phone'), hint = document.getElementById('phoneHint');
-    const fee = document.getElementById('f_fee'), after = document.getElementById('f_afterfee'), svc = document.getElementById('f_services'), area = document.getElementById('f_area');
-    const sync = () => {
-      const india = c.value === 'IN';
-      document.getElementById('gaslineField').hidden = !india;
-      [...tz.options].forEach((o) => { o.hidden = india ? o.value !== 'Asia/Kolkata' : o.value === 'Asia/Kolkata'; });
-      tz.value = india ? 'Asia/Kolkata' : (tz.value === 'Asia/Kolkata' ? 'America/New_York' : tz.value);
-      ph.placeholder = india ? '98765 43210' : '(513) 555-0142';
-      hint.textContent = india ? 'We connect a +91 number for your shop and email it to you.' : 'We pick a local number with the same area code.';
-      fee.placeholder = india ? '₹299 visit charge, waived with repair' : '$89, waived with repair';
-      after.placeholder = india ? '+₹200 after 8 PM' : '+$75';
-      svc.placeholder = india ? 'Split and window AC service, gas refill, installation, AMC' : 'Furnace & AC repair, tune-ups, heat pumps, new system estimates';
-      area.placeholder = india ? 'Areas or PIN codes you serve' : 'Cities or ZIP codes you serve';
+    const T = {
+      US: { tz: [['America/New_York','Eastern'],['America/Chicago','Central'],['America/Denver','Mountain'],['America/Phoenix','Arizona'],['America/Los_Angeles','Pacific'],['America/Anchorage','Alaska'],['Pacific/Honolulu','Hawaii']],
+        days: 'mon-fri', phone: '(513) 555-0142', hint: 'We pick a local number with the same area code.', fee: '$89, waived with repair', after: '+$75',
+        svc: 'Furnace & AC repair, tune-ups, heat pumps, new system estimates', area: 'Cities or ZIP codes you serve' },
+      CA: { tz: [['America/Toronto','Eastern'],['America/Halifax','Atlantic'],['America/St_Johns','Newfoundland'],['America/Winnipeg','Central'],['America/Regina','Saskatchewan'],['America/Edmonton','Mountain'],['America/Vancouver','Pacific']],
+        days: 'mon-fri', phone: '(416) 555-0142', hint: 'We pick a local number with the same area code.', fee: '$99, waived with repair', after: '+$85',
+        svc: 'Furnace & AC repair, heat pumps, boilers, maintenance plans', area: 'Cities or postal codes you serve', langs: [['en','English'],['en-fr','English and French']],
+        gas: ['Gas utility emergency line', 'e.g. 1-877-969-0999', 'Optional. Callers who smell gas are told to leave and call 911, or this number.'] },
+      GB: { tz: [['Europe/London','UK time']], days: 'mon-fri', phone: '07700 900123', hint: 'We connect a UK number for your company and email it to you.', fee: '£75 call-out, waived with repair', after: '+£50 evenings',
+        svc: 'Boiler repair and servicing, heat pumps, air conditioning', area: 'Towns or postcodes you cover',
+        gas: ['Gas emergency number', '0800 111 999', 'Optional. We give the National Gas Emergency number, 0800 111 999, by default. In Northern Ireland use 0800 002 001.'] },
+      AU: { tz: [['Australia/Sydney','NSW, ACT, Victoria, Tasmania'],['Australia/Brisbane','Queensland'],['Australia/Adelaide','South Australia'],['Australia/Darwin','Northern Territory'],['Australia/Perth','Western Australia']],
+        days: 'mon-fri', phone: '0412 345 678', hint: 'We connect an Australian number for your business and email it to you.', fee: '$120 call-out, waived with repair', after: '+$90 after hours',
+        svc: 'Split system and ducted air con, gas heating, servicing', area: 'Suburbs or postcodes you service',
+        gas: ['Gas distributor emergency line', 'e.g. 1800 GAS LEAK', 'Optional. Callers who smell gas are told to leave and call 000, or this number.'] },
+      AE: { tz: [['Asia/Dubai','UAE time']], days: 'mon-sat', phone: '050 123 4567', hint: 'We connect a UAE number for your company and email it to you.', fee: 'AED 150 visit, waived with repair', after: '+AED 100 after 8 PM',
+        svc: 'AC repair and servicing, duct cleaning, chiller maintenance, AMC', area: 'Areas or communities you cover', langs: [['en','English'],['ar','Arabic']],
+        gas: ['Gas supplier emergency line', 'e.g. 800 4277', 'Optional. Callers who smell gas are told to leave and call Civil Defence on 997, or this number.'] },
+      SA: { tz: [['Asia/Riyadh','Saudi time']], days: 'sun-thu', phone: '050 123 4567', hint: 'We connect a Saudi number for your company and email it to you.', fee: 'SAR 150 visit, waived with repair', after: '+SAR 100 after 9 PM',
+        svc: 'Split and central AC repair, servicing, duct cleaning, AMC', area: 'Districts or cities you cover', langs: [['ar','Arabic'],['en','English']],
+        gas: ['Gas supplier emergency line', 'Your gas supplier\'s line', 'Optional. Callers who smell gas are told to leave and call 998, or this number.'] },
+      IN: { tz: [['Asia/Kolkata','India (IST)']], days: 'mon-sat', phone: '98765 43210', hint: 'We connect a +91 number for your shop and email it to you.', fee: '₹299 visit charge, waived with repair', after: '+₹200 after 8 PM',
+        svc: 'Split and window AC service, gas refill, installation, AMC', area: 'Areas or PIN codes you serve',
+        gas: ['Piped gas company emergency number', 'e.g. 1800 22 1166', 'Optional. Callers who smell gas are told to call 112, or this number. Without it we give the LPG helpline, 1906.'] },
     };
+    const $ = (id) => document.getElementById(id);
+    const c = $('f_country'), tz = $('f_timezone'), lang = $('f_language'), days = $('f_workDays');
+    const opts = (sel, list) => { sel.innerHTML = ''; for (const [v, l] of list) sel.add(new Option(l, v)); };
+    let browserTz = ''; try { browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch {}
+    const sync = () => {
+      const k = T[c.value] || T.US;
+      opts(tz, k.tz); if (k.tz.some(([v]) => v === browserTz)) tz.value = browserTz;
+      $('languageField').hidden = !k.langs; opts(lang, k.langs || []);
+      days.value = k.days;
+      $('gaslineField').hidden = !k.gas;
+      if (k.gas) { $('gaslineLabel').textContent = k.gas[0]; $('f_gasline').placeholder = k.gas[1]; $('gaslineHint').textContent = k.gas[2]; } else $('f_gasline').value = '';
+      $('f_phone').placeholder = k.phone; $('phoneHint').textContent = k.hint;
+      $('f_fee').placeholder = k.fee; $('f_afterfee').placeholder = k.after; $('f_services').placeholder = k.svc; $('f_area').placeholder = k.area;
+    };
+    const guess = { 'America/Toronto':'CA','America/Vancouver':'CA','America/Edmonton':'CA','America/Winnipeg':'CA','America/Halifax':'CA','America/Regina':'CA','America/St_Johns':'CA',
+      'Europe/London':'GB','Asia/Dubai':'AE','Asia/Riyadh':'SA','Asia/Kolkata':'IN','Asia/Calcutta':'IN' }[browserTz] || (browserTz.startsWith('Australia/') ? 'AU' : '');
+    if (guess) c.value = guess;
     c.addEventListener('change', sync); sync();
   })();
   const btn = document.getElementById('signupBtn');
   const formError = document.getElementById('formError');
   const done = document.getElementById('signupDone');
-  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); return m ? `(${m[1]}) ${m[2]}-${m[3]}` : n; };
+  const INTL = { '91': [5, 5], '44': [4, 6], '61': [3, 3, 3], '971': [2, 3, 4], '966': [2, 3, 4] }; const intl = (n) => { const m = /^\+(91|44|61|971|966)(\d+)$/.exec(n || ''); if (!m) return ''; let d = m[2], out = []; for (const k of INTL[m[1]]) { out.push(d.slice(0, k)); d = d.slice(k); } if (d) out.push(d); return `+${m[1]} ${out.filter(Boolean).join(' ')}`; };
+  const pretty = (n) => { const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(n || ''); if (m) return `(${m[1]}) ${m[2]}-${m[3]}`; return intl(n) || n; };
 
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;

@@ -15,7 +15,7 @@ export function billingProvider(config, client) {
 export async function stripeCheckout(config, client, { successUrl, cancelUrl, fetchImpl }) {
   const form = new URLSearchParams({
     mode: 'subscription',
-    'line_items[0][price]': config.stripe.priceId,
+    'line_items[0][price]': config.countries?.[countryOf(client).code]?.stripePriceId || config.stripe.priceId,
     'line_items[0][quantity]': '1',
     success_url: successUrl,
     cancel_url: cancelUrl,

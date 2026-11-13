@@ -25,6 +25,7 @@
   ],
   "dependencies": {
     "express": "4.21.2",
+    "libphonenumber-js": "^1.11.18",
     "nodemailer": "6.9.16",
     "pg": "8.13.1"
   }
