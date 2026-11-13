@@ -5,6 +5,7 @@ import { normalizePhone } from './phone.js';
 // Turns a sign-up into a live receptionist: Vapi assistant -> phone number -> welcome email.
 import { buildSystemPrompt, firstMessage, toolDefinitions, transferNumber } from './prompt.js';
 import { welcomeEmail } from './emails.js';
+import { withTrial } from './trial.js';
 
 export function webhookUrl(config, clientId) {
   const q = new URLSearchParams({ client: clientId, token: config.webhookSecret });
@@ -173,7 +174,7 @@ export async function provisionClient(clientId, deps) {
       if (p?.number) client = await db.updateClient(clientId, { phoneNumber: p.number });
     }
 
-    client = await db.updateClient(clientId, { status: 'active' });
+    client = await db.updateClient(clientId, { status: 'active', details: withTrial(client.details, config) });
   } catch (err) {
     logger.error(`[provision] ${client.business} (${clientId}): ${err.message}`);
     // Don't leave an orphan assistant behind if the number step failed right after creating it.
@@ -255,7 +256,7 @@ export async function attachNumber(clientId, rawNumber, deps) {
     : 'Add your Twilio keys first, then attach a number from your Twilio account.'), { status: 409 });
   const p = await vapi.createPhoneNumber(body);
   if (!p?.id) throw new Error('Vapi did not return a phone number id.');
-  client = await db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: number, status: 'active', error: null });
+  client = await db.updateClient(clientId, { vapiPhoneId: p.id, phoneNumber: number, status: 'active', error: null, details: withTrial(client.details, config) });
   await safeSend(mailer, logger, welcomeEmail(config, client));
   return client;
 }

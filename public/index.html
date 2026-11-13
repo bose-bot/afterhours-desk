@@ -347,7 +347,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     <h1 class="rise d2">Every call answered. Every job booked. Even at 2&nbsp;a.m.</h1>
     <p class="lede rise d3">AfterHours Desk is an AI receptionist for heating and cooling companies. It picks up when you can't, books the visit, sends emergencies the right way, and tells you what happened.</p>
     <div class="row rise d4">
-      <a class="btn" href="#signup">Create my receptionist</a>
+      <a class="btn" href="#signup">Try it free for a month</a>
       <a class="btn ghost" href="#story">Watch what happens next</a>
     </div>
   </div>
@@ -493,21 +493,21 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
 <!-- PRICING -->
 <section class="band night" id="pricing">
   <div class="wrap">
-    <div class="section-head"><h2>Simple monthly pricing.</h2><p class="lede">No contracts. Keep your number. Cancel any month.</p></div>
+    <div class="section-head"><h2>Simple monthly pricing.</h2><p class="lede">Your first month is free, no card needed. Then no contracts: keep your number, cancel any month.</p></div>
     <div class="plans">
       <div class="plan lead">
         <h3>Founding shops</h3>
         <p class="price">$99 <small>/ month</small></p>
         <p class="muted">For our first partners. Setup included, in exchange for honest feedback.</p>
         <ul><li>After-hours and overflow calls</li><li>Booking into open time slots</li><li>Call summaries by email</li><li>A monthly check-in to tune what it says</li></ul>
-        <a class="btn" href="#signup">Claim a founding spot</a>
+        <a class="btn" href="#signup">Start your free month</a>
       </div>
       <div class="plan">
         <h3>Standard</h3>
         <p class="price">$199 <small>/ month</small></p>
         <p class="muted">Plus $299 one-time setup. Includes 300 call minutes a month.</p>
         <ul><li>Everything in Founding</li><li>Emergency routing to your on-call tech</li><li>Seasonal script updates</li></ul>
-        <a class="btn ghost" href="#signup">Get started</a>
+        <a class="btn ghost" href="#signup">Start your free month</a>
       </div>
     </div>
   </div>
@@ -574,7 +574,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     <div class="field full"><label for="f_services">Services you offer</label><input id="f_services" name="services" maxlength="400" placeholder="Furnace &amp; AC repair, tune-ups, heat pumps, new system estimates"></div>
     <div class="field full"><label for="f_notes">Anything else the assistant should know</label><textarea id="f_notes" name="notes" rows="3" maxlength="1500" placeholder="Maintenance plan, brands you don't service, financing…"></textarea></div>
     <div class="field"><label for="f_plan">Plan</label><select id="f_plan" name="plan"><option>Founding pilot</option><option>Standard</option><option>Not sure yet</option></select></div>
-    <div class="field full row"><button class="btn" type="submit" id="signupBtn">Create my receptionist</button><span class="hint">By submitting you agree to our <a href="/privacy">privacy policy</a>. Don't include passwords or payment details.</span></div>
+    <div class="field full row"><button class="btn" type="submit" id="signupBtn">Start my free month</button><span class="hint">By submitting you agree to our <a href="/privacy">privacy policy</a>. Don't include passwords or payment details.</span></div>
     <p class="field full" id="formError" role="alert" hidden style="font-weight:600"></p>
   </form>
   <div id="signupDone" class="launch" hidden aria-live="polite">
@@ -1055,7 +1055,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     } catch {
       showErrors({ form: 'Could not reach the server. Check your connection and try again.' });
     } finally {
-      btn.disabled = false; btn.textContent = 'Create my receptionist';
+      btn.disabled = false; btn.textContent = 'Start my free month';
     }
   });
 })();

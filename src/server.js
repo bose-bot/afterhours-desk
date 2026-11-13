@@ -10,6 +10,7 @@ import { usageThisMonth, busiestToday } from './usage.js';
 import { billingProvider, stripeCheckout, stripeSignatureValid, stripeEventUpdate, razorpaySubscription, razorpaySignatureValid, razorpayEventUpdate, applyBillingUpdate } from './billing.js';
 import { countryOf } from './countries.js';
 import { recoverCalls } from './recover.js';
+import { trialView, withTrial, pauseForPayment, resumeIfPaused } from './trial.js';
 import { ownerKeyValid, ownerUrl } from './owner.js';
 import { sendReport } from './report.js';
 import { PROVIDERS, loadIntegration, saveIntegration, syncBooking, testConnection, jobber } from './integrations/sync.js';
@@ -152,7 +153,36 @@ export function createApp(deps) {
   const usageOf = (c) => usageThisMonth(db, c, { now: (deps.now || (() => new Date()))(), timezone: config.timezone, includedMinutes: config.includedMinutes });
   admin.get('/clients', wrap(async (_req, res) => {
     const clients = (await db.listClients()).filter((c) => c.status !== 'demo');
-    res.json({ clients: await Promise.all(clients.map(async (c) => ({ ...c, usage: await usageOf(c) }))) });
+    res.json({ clients: await Promise.all(clients.map(async (c) => ({ ...c, usage: await usageOf(c), trial: trialView(c, config) }))) });
+  }));
+  // Free month controls: more days, mark paid by invoice, pause, resume.
+  const oneClient = async (req, res) => { const c = await db.getClient(req.params.id); if (!c) res.status(404).json({ error: 'No client with that id.' }); return c; };
+  admin.post('/clients/:id/extend-trial', wrap(async (req, res) => {
+    let c = await oneClient(req, res); if (!c) return;
+    const days = Math.min(365, Math.max(1, Number(req.body?.days) || 14));
+    const base = withTrial(c.details, config).trial || { startedAt: new Date().toISOString(), endsAt: new Date().toISOString() };
+    const from = Math.max(Date.now(), new Date(base.endsAt).getTime());
+    c = await db.updateClient(c.id, { details: { ...c.details, trial: { ...base, endsAt: new Date(from + days * 86_400_000).toISOString() } } });
+    c = await resumeIfPaused(c, deps);
+    res.json({ client: { ...c, trial: trialView(c, config) } });
+  }));
+  admin.post('/clients/:id/mark-paid', wrap(async (req, res) => {
+    let c = await oneClient(req, res); if (!c) return;
+    const paid = req.body?.paid !== false;
+    c = await db.updateClient(c.id, { details: { ...c.details, billing: { ...(c.details.billing || {}), manual: paid, updatedAt: new Date().toISOString() } } });
+    if (paid) c = await resumeIfPaused(c, deps);
+    res.json({ client: { ...c, trial: trialView(c, config) } });
+  }));
+  admin.post('/clients/:id/pause', wrap(async (req, res) => {
+    const c = await oneClient(req, res); if (!c) return;
+    if (c.status !== 'active') return res.status(409).json({ error: 'Only a live receptionist can be paused.' });
+    if (c.vapiPhoneId) await deps.vapi.updatePhoneNumber(c.vapiPhoneId, { assistantId: null });
+    res.json({ client: await db.updateClient(c.id, { status: 'paused', details: { ...c.details, pausedFor: 'operator', pausedAt: new Date().toISOString() } }) });
+  }));
+  admin.post('/clients/:id/resume', wrap(async (req, res) => {
+    const c = await oneClient(req, res); if (!c) return;
+    if (c.status !== 'paused') return res.status(409).json({ error: 'This receptionist is not paused.' });
+    res.json({ client: await resumeIfPaused(c, deps, { force: true }) });
   }));
   // Sends the morning report right now, covering the last 24 hours, even if nothing came in.
   admin.post('/clients/:id/send-report', wrap(async (req, res) => {
@@ -180,7 +210,7 @@ export function createApp(deps) {
     const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'not found' });
     const integ = await db.getIntegration(c.id);
-    res.json({ client: c, usage: await usageOf(c), ownerUrl: c.status === 'demo' ? '' : ownerUrl(config, c),
+    res.json({ client: c, trial: trialView(c, config), usage: await usageOf(c), ownerUrl: c.status === 'demo' ? '' : ownerUrl(config, c),
       integration: integ ? { name: PROVIDERS[integ.provider], account: integ.account_name } : null,
       bookings: await db.listBookings(c.id), calls: await db.listCalls(c.id) });
   }));
@@ -230,7 +260,8 @@ export function createApp(deps) {
     res.json({
       shop: { business: c.business, contact: c.contact, phoneNumber: c.phoneNumber, status: c.status, timezone: c.details?.schedule?.timezone || config.timezone,
         country: countryOf(c).code, locale: countryOf(c).locale },
-      billing: { provider: billingProvider(config, c), status: c.details?.billing?.status || null },
+      billing: { provider: billingProvider(config, c), status: c.details?.billing?.manual ? 'active' : (c.details?.billing?.status || null) },
+      trial: trialView(c, config),
       usage: await usageOf(c),
       items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error })),
       calls,

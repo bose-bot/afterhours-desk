@@ -88,6 +88,9 @@ export function loadConfig(env = process.env) {
     includedMinutes: int(env.INCLUDED_MINUTES, 300),
     // How often to fetch call reports from Vapi that never reached this server. 0 turns it off.
     recoverEveryMinutes: int(env.RECOVER_EVERY_MINUTES, 10),
+    // Free first month: starts when the receptionist goes live. TRIAL_DAYS=0 turns trials off.
+    // After TRIAL_GRACE_DAYS without payment: 'pause' the receptionist (calls go to the shop's own phone), or just 'notify' you.
+    trial: { days: int(env.TRIAL_DAYS, 30), graceDays: int(env.TRIAL_GRACE_DAYS, 3), endAction: env.TRIAL_END_ACTION === 'notify' ? 'notify' : 'pause' },
     // Billing. US shops pay through Stripe Checkout, Indian shops through a Razorpay subscription.
     stripe: { secretKey: env.STRIPE_SECRET_KEY || '', priceId: env.STRIPE_PRICE_ID || '', webhookSecret: env.STRIPE_WEBHOOK_SECRET || '',
       trialDays: int(env.STRIPE_TRIAL_DAYS, 14), automaticTax: bool(env.STRIPE_AUTOMATIC_TAX, false) },

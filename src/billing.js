@@ -2,6 +2,7 @@
 // Each provider tells us about payments through a signed webhook; we keep the latest status on the shop.
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { countryOf } from './countries.js';
+import { resumeIfPaused } from './trial.js';
 
 const safeEq = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && x.length > 0 && timingSafeEqual(x, y); };
 
@@ -24,7 +25,10 @@ export async function stripeCheckout(config, client, { successUrl, cancelUrl, fe
     'subscription_data[metadata][client_id]': client.id,
     'metadata[client_id]': client.id,
   });
-  if (config.stripe.trialDays > 0) form.set('subscription_data[trial_period_days]', String(config.stripe.trialDays));
+  // Paying during the free month: the first charge waits until the free month ends (Stripe needs 48+ hours' notice).
+  const trialEnd = client.details?.trial ? Math.floor(new Date(client.details.trial.endsAt).getTime() / 1000) : 0;
+  if (trialEnd > Date.now() / 1000 + 48 * 3600) form.set('subscription_data[trial_end]', String(trialEnd));
+  else if (!client.details?.trial && config.stripe.trialDays > 0) form.set('subscription_data[trial_period_days]', String(config.stripe.trialDays));
   // Stripe Tax works out US sales tax by state; it needs the customer's address.
   if (config.stripe.automaticTax) { form.set('automatic_tax[enabled]', 'true'); form.set('billing_address_collection', 'required'); }
   const res = await fetchImpl('https://api.stripe.com/v1/checkout/sessions', {
@@ -65,11 +69,14 @@ export function stripeEventUpdate(event) {
 }
 
 // ---- Razorpay ----
+const trialEndsLater = (client) => { const s = client.details?.trial ? Math.floor(new Date(client.details.trial.endsAt).getTime() / 1000) : 0; return s > Date.now() / 1000 + 3600 ? s : 0; };
 export async function razorpaySubscription(config, client, { fetchImpl }) {
   const res = await fetchImpl('https://api.razorpay.com/v1/subscriptions', {
     method: 'POST',
     headers: { Authorization: `Basic ${Buffer.from(`${config.razorpay.keyId}:${config.razorpay.keySecret}`).toString('base64')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plan_id: config.razorpay.planId, total_count: 120, quantity: 1, customer_notify: 1, notes: { client_id: client.id, business: client.business.slice(0, 200) } }),
+    body: JSON.stringify({ plan_id: config.razorpay.planId, total_count: 120, quantity: 1, customer_notify: 1, notes: { client_id: client.id, business: client.business.slice(0, 200) },
+      // Paying during the free month: the first charge is on the day it ends.
+      ...(trialEndsLater(client) ? { start_at: trialEndsLater(client) } : {}) }),
   });
   const j = await res.json().catch(() => ({}));
   if (!res.ok || !j.short_url) throw new Error(`Razorpay: ${j.error?.description || `subscription failed (${res.status})`}`);
@@ -95,7 +102,8 @@ export function razorpayEventUpdate(event) {
 }
 
 // Saves a billing change on the shop, and tells the operator when a payment problem starts.
-export async function applyBillingUpdate(provider, update, { db, mailer, config, logger = console }) {
+export async function applyBillingUpdate(provider, update, deps) {
+  const { db, mailer, config, logger = console } = deps;
   if (!update?.clientId) return false;
   const client = await db.getClient(update.clientId);
   if (!client) return false;
@@ -103,7 +111,11 @@ export async function applyBillingUpdate(provider, update, { db, mailer, config,
   const billing = { ...(client.details.billing || {}), provider, status: update.status,
     ...(update.subscriptionId ? { subscriptionId: update.subscriptionId } : {}), ...(update.customerId ? { customerId: update.customerId } : {}),
     updatedAt: new Date().toISOString() };
-  await db.updateClient(client.id, { details: { ...client.details, billing } });
+  const saved = await db.updateClient(client.id, { details: { ...client.details, billing } });
+  // Paused only because the free month ran out? Paying turns the receptionist back on.
+  if (['active', 'trialing'].includes(update.status) && saved.status === 'paused' && deps.vapi) {
+    try { await resumeIfPaused(saved, deps); } catch (e) { logger.error(`[billing] resume failed: ${e.message}`); }
+  }
   const trouble = ['past_due', 'unpaid', 'canceled', 'paused'];
   if (trouble.includes(update.status) && before !== update.status && config.mail.operatorEmail) {
     try {

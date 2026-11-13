@@ -146,8 +146,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
   try { token = sessionStorage.getItem('adminToken') || ''; } catch {}
   let selected = null, timer = null;
 
-  async function api(method, path) {
-    const r = await fetch(path, { method, headers: { Authorization: `Bearer ${token}` } });
+  async function api(method, path, body) {
+    const r = await fetch(path, { method, headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
     if (r.status === 401) { const e = new Error('That token was not accepted. Check you copied all of it.'); e.auth = true; throw e; }
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || `Request failed (${r.status}).`);
@@ -194,12 +194,14 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
       if (c.status === 'pending_approval') actions.append(el('button', { class: 'btn', type: 'button', text: 'Approve', onclick: (ev) => act(ev, c, 'approve') }));
       if (c.status === 'failed') actions.append(el('button', { class: 'btn', type: 'button', text: 'Retry setup', onclick: (ev) => act(ev, c, 'retry') }));
       if (c.status === 'active' && !c.phoneNumber) actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Get number', onclick: (ev) => act(ev, c, 'refresh-number') }));
+      if (c.status === 'active' && c.vapiPhoneId) actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Pause', title: 'Calls go to the shop\'s own phone until resumed', onclick: (ev) => act(ev, c, 'pause', 'Paused') }));
+      if (c.status === 'paused') actions.append(el('button', { class: 'btn', type: 'button', text: 'Resume', onclick: (ev) => act(ev, c, 'resume', 'Resumed') }));
       if (c.status === 'active' && c.vapiAssistantId) actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Update script', title: 'Send the latest receptionist script to this shop', onclick: (ev) => act(ev, c, 'update-script', 'Script updated') }));
       actions.append(el('button', { class: 'btn ghost', type: 'button', text: 'Details', onclick: () => openDetail(c.id) }));
       tb.append(el('tr', { class: c.id === selected ? 'sel' : '' },
         el('td', {}, el('b', { text: c.business }), el('div', { class: 'hint', text: c.details?.area || '' })),
         el('td', {}, el('div', { text: c.contact }), el('div', { class: 'hint', text: c.email }), el('div', { class: 'mono', text: pretty(c.phone) })),
-        el('td', {}, el('span', { class: `pill s-${c.status}`, text: LABEL[c.status] || c.status }), c.error ? el('div', { class: 'hint', style: 'color:var(--crit);max-width:260px', text: c.error }) : null),
+        el('td', {}, el('span', { class: `pill s-${c.status}`, text: LABEL[c.status] || c.status }), c.error ? el('div', { class: 'hint', style: 'color:var(--crit);max-width:260px', text: c.error }) : null, trialHint(c.trial)),
         el('td', { class: 'mono', text: c.phoneNumber ? pretty(c.phoneNumber) : '—' }),
         el('td', {}, usageCell(c.usage)),
         el('td', { class: 'mono', text: when(c.createdAt) }),
@@ -221,6 +223,27 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
   }
 
   // India, UAE, Saudi Arabia (licensed provider) or UK/Australia (bought in Twilio): paste the number; it's connected to this shop's assistant.
+  // Free month: one line under the status, e.g. "Free month: 12 days left" or "Paused for payment".
+  function trialHint(t) {
+    if (!t) return null;
+    const text = t.paid ? 'Paying' : t.pausedForPayment ? 'Paused for payment' : t.ended ? 'Free month over, not paid' : `Free month: ${t.daysLeft} day${t.daysLeft === 1 ? '' : 's'} left`;
+    return el('div', { class: 'hint', style: !t.paid && (t.ended || t.pausedForPayment) ? 'color:var(--crit)' : '', text });
+  }
+  function trialTools(c, t) {
+    const post = async (ev, path, body, msg) => {
+      ev.target.disabled = true;
+      try { await api('POST', `/api/admin/clients/${encodeURIComponent(c.id)}/${path}`, body); $('#appOk').textContent = `${msg} for ${c.business}.`; $('#appOk').hidden = false; }
+      catch (e) { $('#appErr').textContent = e.message; $('#appErr').hidden = false; }
+      openDetail(c.id, true);
+    };
+    const manual = Boolean(c.details?.billing?.manual);
+    return el('div', {},
+      el('div', { text: t ? (t.paid ? 'Paying' : t.ended ? `Ended ${when(t.endsAt)}${t.pausedForPayment ? ', paused for payment' : `, pauses ${when(t.pausesAt)} if unpaid`}` : `${t.daysLeft} days left, ends ${when(t.endsAt)}`) : 'Starts when the receptionist goes live' }),
+      el('div', { class: 'row', style: 'margin-top:8px;gap:8px' },
+        el('button', { class: 'btn ghost', type: 'button', text: 'Extend 14 days', onclick: (ev) => post(ev, 'extend-trial', { days: 14 }, 'Free month extended') }),
+        el('button', { class: 'btn ghost', type: 'button', text: manual ? 'Unmark paid' : 'Mark paid (invoice)', onclick: (ev) => post(ev, 'mark-paid', { paid: !manual }, manual ? 'Unmarked' : 'Marked paid') })));
+  }
+
   function attachTools(c) {
     const input = el('input', { id: `attach-${c.id}`, type: 'tel', placeholder: '+44 20 7946 0958', 'aria-label': 'Phone number with country code', style: 'min-height:42px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;padding:6px 12px' });
     const note = el('span', { class: 'hint', text: 'Get the number from the local provider (India, UAE, Saudi) or buy it in Twilio (UK, Australia) first.' });
@@ -263,7 +286,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
     selected = id;
     const box = $('#detail');
     try {
-      const { client: c, usage, ownerUrl, integration, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
+      const { client: c, trial, usage, ownerUrl, integration, bookings, calls } = await api('GET', `/api/admin/clients/${encodeURIComponent(id)}`);
       box.textContent = '';
       const d = c.details || {};
       box.append(
@@ -273,8 +296,9 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Service area' }), el('dd', { text: d.area || '—' }),
           el('dt', { text: 'Office / on-call' }), el('dd', { class: 'mono', text: `${pretty(d.office)} / ${pretty(d.oncall)}` }),
           el('dt', { text: 'Fees' }), el('dd', { text: [d.fee, d.afterfee].filter(Boolean).join(' · ') || '—' }),
-          el('dt', { text: 'Country' }), el('dd', { text: d.country === 'IN' ? 'India' : 'United States' }),
+          el('dt', { text: 'Country' }), el('dd', { text: ({ US: 'United States', CA: 'Canada', GB: 'United Kingdom', AU: 'Australia', AE: 'United Arab Emirates', SA: 'Saudi Arabia', IN: 'India' })[d.country || 'US'] || d.country }),
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
+          el('dt', { text: 'Free month' }), el('dd', {}, trialTools(c, trial)),
           el('dt', { text: 'Billing' }), el('dd', { text: d.billing ? `${d.billing.status} (${d.billing.provider === 'razorpay' ? 'Razorpay' : 'Stripe'})` : 'No subscription yet' }),
           ...(c.status === 'needs_number' ? [el('dt', { text: 'Phone number' }), el('dd', {}, attachTools(c))] : []),
           el('dt', { text: 'This month' }), el('dd', {}, usageCell(usage)),

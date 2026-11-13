@@ -7,6 +7,7 @@ import { createApp } from './server.js';
 import { ensureSecrets } from './secrets.js';
 import { recoverCalls } from './recover.js';
 import { runMorningReports } from './report.js';
+import { runTrials } from './trial.js';
 
 // Node's default listens on IPv6 and IPv4 where available (falls back to IPv4 only). Override with HOST.
 const listen = (app, cb) => (process.env.HOST ? app.listen(config.port, process.env.HOST, cb) : app.listen(config.port, cb));
@@ -47,6 +48,12 @@ if (problems.length) {
     const reports = () => runMorningReports({ db, mailer, config }).catch((e) => console.error(`[report] ${e.message}`));
     setTimeout(reports, 45_000).unref();
     setInterval(reports, 10 * 60_000).unref();
+  }
+  // Free month: reminders, pausing after the grace days, and starting trials for older live shops. Hourly.
+  if (config.trial.days > 0) {
+    const trials = () => runTrials({ db, vapi, mailer, config }).catch((e) => console.error(`[trial] ${e.message}`));
+    setTimeout(trials, 60_000).unref();
+    setInterval(trials, 60 * 60_000).unref();
   }
   server = listen(app, () => {
     console.log(`${config.brandName} running at ${config.publicUrl} on port ${config.port} (${config.provisionMode} setup, max ${config.maxClients} clients, email: ${mailer.provider})`);

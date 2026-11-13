@@ -164,7 +164,10 @@ test('US shops subscribe through Stripe Checkout, and Stripe webhooks update the
     assert.equal(sent[0].url, 'https://api.stripe.com/v1/checkout/sessions');
     assert.equal(form.get('line_items[0][price]'), 'price_199');
     assert.equal(form.get('client_reference_id'), id);
-    assert.equal(form.get('subscription_data[trial_period_days]'), '14');
+    // The first charge waits for the end of the free month that started when the shop went live.
+    const ends = Math.floor(new Date((await t.db.getClient(id)).details.trial.endsAt).getTime() / 1000);
+    assert.equal(form.get('subscription_data[trial_end]'), String(ends));
+    assert.equal(form.get('subscription_data[trial_period_days]'), null);
     assert.equal(sent[0].opts.headers.Authorization, 'Bearer sk_test_1');
 
     const event = JSON.stringify({ type: 'customer.subscription.updated', data: { object: { id: 'sub_1', customer: 'cus_1', status: 'past_due', metadata: { client_id: id } } } });

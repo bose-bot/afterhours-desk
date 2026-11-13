@@ -240,18 +240,28 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
 
   // Start or check the subscription: Stripe for US shops, Razorpay (rupees, GST invoice) for Indian shops.
   function renderBilling() {
-    const b = data.billing || {}, box = $('#billing');
-    $('#billingSection').hidden = !b.provider && !b.status;
-    const label = { active: 'Active', trialing: 'Free trial', pending: 'Waiting for your first payment', past_due: 'Payment failed', unpaid: 'Payment failed', canceled: 'Cancelled', paused: 'Paused' }[b.status];
-    const kids = [el('p', {}, el('span', { class: b.status === 'active' || b.status === 'trialing' ? 'ok' : '', text: label || 'Not started' }))];
-    if (b.provider && !['active', 'trialing'].includes(b.status)) {
-      const btn = el('button', { class: 'btn call', type: 'button', text: b.status === 'past_due' || b.status === 'unpaid' ? 'Update payment' : 'Start subscription' });
+    const b = data.billing || {}, t = data.trial, box = $('#billing');
+    $('#billingSection').hidden = !b.provider && !b.status && !t;
+    const paid = b.status === 'active' || b.status === 'trialing';
+    const label = { active: 'Active', trialing: 'Active: first charge after your free month', pending: 'Waiting for your first payment', past_due: 'Payment failed', unpaid: 'Payment failed', canceled: 'Cancelled', paused: 'Paused' }[b.status];
+    const fmt = (iso) => new Date(iso).toLocaleDateString(data.shop?.locale || undefined, { month: 'long', day: 'numeric', timeZone: data.shop?.timezone });
+    let head = label || 'Not started', note = '';
+    if (!paid && t) {
+      if (t.pausedForPayment) { head = 'Paused: add payment to turn it back on'; note = 'Calls to your number go to your own phone until then.'; }
+      else if (t.ended) { head = 'Your free month has ended'; note = `Add payment by ${fmt(t.pausesAt)} to keep your receptionist answering.`; }
+      else { head = `Free month: ${t.daysLeft} day${t.daysLeft === 1 ? '' : 's'} left`; note = `Free until ${fmt(t.endsAt)}. Add payment any time: you won't be charged until then.`; }
+    }
+    const kids = [el('p', {}, el('span', { class: paid || (t && !t.ended) ? 'ok' : '', text: head }))];
+    if (note) kids.push(el('p', { class: 'note', text: note }));
+    if (!paid && t && !b.provider) kids.push(el('p', { class: 'note', text: 'We will email you an invoice before your free month ends.' }));
+    if (b.provider && !paid) {
+      const btn = el('button', { class: 'btn call', type: 'button', text: b.status === 'past_due' || b.status === 'unpaid' ? 'Update payment' : t ? 'Add payment' : 'Start subscription' });
       btn.addEventListener('click', async () => {
-        btn.disabled = true; btn.textContent = 'Opening…';
+        const was = btn.textContent; btn.disabled = true; btn.textContent = 'Opening…';
         try { const r = await api('POST', `/api/owner/${encodeURIComponent(id)}/billing/checkout`); location.href = r.url; }
-        catch (e) { toast(e.message); btn.disabled = false; btn.textContent = 'Start subscription'; }
+        catch (e) { toast(e.message); btn.disabled = false; btn.textContent = was; }
       });
-      kids.push(el('p', { class: 'note', text: b.provider === 'razorpay' ? 'Pay in rupees by UPI, card or netbanking through Razorpay. GST invoice included.' : 'Secure checkout by Stripe. Your free trial starts today.' }), el('div', { class: 'row' }, btn));
+      kids.push(el('p', { class: 'note', text: b.provider === 'razorpay' ? 'Pay in rupees by UPI, card or netbanking through Razorpay. GST invoice included.' : 'Secure checkout by Stripe.' }), el('div', { class: 'row' }, btn));
     }
     box.replaceChildren(...kids);
   }

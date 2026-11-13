@@ -30,6 +30,13 @@ const dashButton = (url) => url ? `<tr><td style="padding:4px 0 6px;"><a href="$
 
 const panel = (inner, border = C.line) => `<tr><td style="background:${C.panel};border:1px solid ${border};border-radius:18px;padding:26px 24px;">${inner}</td></tr><tr><td style="height:14px;"></td></tr>`;
 
+// The free month, in one sentence, for the welcome email.
+const trialLine = (client) => {
+  const t = client.details?.trial; if (!t) return '';
+  const d = new Date(t.endsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: client.details?.schedule?.timezone || 'America/New_York' });
+  return `Your first month is free, until ${d}. No card needed now: add payment from your dashboard any time before then.`;
+};
+
 export function welcomeEmail(config, client) {
   const brand = config.brandName;
   const n = client.phoneNumber ? prettyPhone(client.phoneNumber) : null;
@@ -45,7 +52,7 @@ What to do next:
 3. Reply to this email with anything it should say differently.
 
 New bookings and messages will be sent to this address, with a summary each morning at 7.
-${ownerUrl(config, client) ? `\nYour dashboard (bookmark it): ${ownerUrl(config, client)}\n` : ''}
+${trialLine(client) ? `\n${trialLine(client)}\n` : ''}${ownerUrl(config, client) ? `\nYour dashboard (bookmark it): ${ownerUrl(config, client)}\n` : ''}
 ${brand}`;
 
   const steps = [
@@ -66,6 +73,7 @@ ${brand}`;
     <div style="font-size:18px;font-weight:800;margin-bottom:18px;">Next steps</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${steps}</table>
     <div style="font-size:14px;color:${C.dim};border-top:1px solid ${C.line};padding-top:16px;">Hi ${esc(client.contact)}, every booking and message will be emailed to this address right after the call, with a summary each morning at 7. Your dashboard shows all of them in one place.</div>
+    ${trialLine(client) ? `<div style="font-size:14px;color:${C.ok};font-weight:700;padding-top:14px;">${esc(trialLine(client))}</div>` : ''}
   `) + dashButton(ownerUrl(config, client));
 
   return {
