@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>AfterHours Desk — AI receptionist for HVAC companies</title>
-<meta name="description" content="An AI receptionist for heating and cooling companies. It answers after-hours and overflow calls, books service visits, handles emergencies safely, and emails you a summary of every call.">
+<title>AfterHours Desk — AI receptionist for service businesses</title>
+<meta name="description" content="An AI receptionist for service businesses: HVAC, plumbing, electrical, roofing, pest control and more. It answers after-hours and overflow calls, books service visits, handles emergencies safely, and emails you a summary of every call.">
 <meta property="og:title" content="AfterHours Desk — AI receptionist for HVAC companies">
 <meta property="og:description" content="Every call answered. Every job booked. Even at 2 a.m.">
 <meta property="og:type" content="website">
@@ -345,7 +345,7 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     <div class="scene-copy">
     <span class="ringing rise d1"><i aria-hidden="true"></i>Someone is calling your shop right now</span>
     <h1 class="rise d2">Every call answered. Every job booked. Even at 2&nbsp;a.m.</h1>
-    <p class="lede rise d3">AfterHours Desk is an AI receptionist for heating and cooling companies. It picks up when you can't, books the visit, sends emergencies the right way, and tells you what happened.</p>
+    <p class="lede rise d3">AfterHours Desk is an AI receptionist for service businesses: heating and cooling, plumbing, electrical, roofing, pest control, locksmiths and more. It picks up when you can't, books the visit, sends emergencies the right way, and tells you what happened.</p>
     <div class="row rise d4">
       <a class="btn" href="#signup">Try it free for a month</a>
       <a class="btn ghost" href="#story">Watch what happens next</a>
@@ -557,6 +557,8 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     <p class="hp"><label>Leave this empty <input name="website" tabindex="-1" autocomplete="off"></label></p>
     <div class="field full"><label for="f_country">Country</label><select id="f_country" name="country"><option value="US">United States</option><option value="CA">Canada</option><option value="GB">United Kingdom</option><option value="AU">Australia</option><option value="AE">United Arab Emirates</option><option value="SA">Saudi Arabia</option><option value="IN">India</option></select></div>
     <div class="field full" id="languageField" hidden><label for="f_language">Callers speak</label><select id="f_language" name="language"></select><span class="hint">The receptionist listens and answers in this language.</span></div>
+    <div class="field full"><label for="f_trade">Type of business</label><select id="f_trade" name="trade"><option value="hvac">Heating & air conditioning (HVAC)</option><option value="plumbing">Plumbing</option><option value="electrical">Electrical</option><option value="roofing">Roofing</option><option value="pest">Pest control</option><option value="appliance">Appliance repair</option><option value="garage">Garage doors</option><option value="locksmith">Locksmith</option><option value="cleaning">Cleaning</option><option value="landscaping">Landscaping & tree care</option><option value="other">Other business</option></select><span class="hint">The receptionist uses the right words, safety advice and questions for your kind of work.</span></div>
+    <div class="field full" id="businessTypeField" hidden><label for="f_businessType">What does your business do?</label><input id="f_businessType" name="businessType" maxlength="80" placeholder="e.g. dental clinic, auto repair shop, hair salon"></div>
     <div class="field"><label for="f_business">Business name</label><input id="f_business" name="business" required maxlength="80"></div>
     <div class="field"><label for="f_contact">Your name</label><input id="f_contact" name="contact" required maxlength="80" autocomplete="name"></div>
     <div class="field"><label for="f_phone">Your mobile</label><input id="f_phone" name="phone" type="tel" required autocomplete="tel" placeholder="(513) 555-0142"><span class="hint" id="phoneHint">We pick a local number with the same area code.</span></div>
@@ -943,6 +945,20 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
       'Europe/London':'GB','Asia/Dubai':'AE','Asia/Riyadh':'SA','Asia/Kolkata':'IN','Asia/Calcutta':'IN' }[browserTz] || (browserTz.startsWith('Australia/') ? 'AU' : '');
     if (guess) c.value = guess;
     c.addEventListener('change', sync); sync();
+  })();
+  // Type of business: services hint per trade, and a short description for any other business.
+  (() => {
+    const SV = {"hvac": "", "plumbing": "Leaks and burst pipes, drain cleaning, water heaters, toilets, sewer lines", "electrical": "Repairs, panel upgrades, outlets and lighting, EV chargers, generators", "roofing": "Leak repair, storm damage, roof replacement, gutters, inspections", "pest": "Ants, roaches, rodents, termites, bed bugs, wasps, regular treatments", "appliance": "Fridge, washer, dryer, dishwasher, oven and stove repair", "garage": "Springs and cables, opener repair, new doors, tune-ups", "locksmith": "Lockouts, rekeying, lock changes, car keys, safes", "cleaning": "Home and office cleaning, deep cleans, move-in and move-out", "landscaping": "Lawn care, tree trimming and removal, sprinklers", "other": "What you offer, e.g. cleanings, check-ups, fillings, whitening"};
+    const t = document.getElementById('f_trade'), c = document.getElementById('f_country'), sv = document.getElementById('f_services');
+    const hvacHint = () => sv.dataset.hvac || sv.placeholder;
+    const sync = () => {
+      if (t.value === 'hvac') { if (sv.dataset.hvac) sv.placeholder = sv.dataset.hvac; } else { sv.dataset.hvac = hvacHint(); sv.placeholder = SV[t.value]; }
+      document.getElementById('businessTypeField').hidden = t.value !== 'other';
+      document.getElementById('f_businessType').required = t.value === 'other';
+    };
+    t.addEventListener('change', sync);
+    c.addEventListener('change', () => { delete sv.dataset.hvac; if (t.value !== 'hvac') sync(); });
+    sync();
   })();
   const btn = document.getElementById('signupBtn');
   const formError = document.getElementById('formError');

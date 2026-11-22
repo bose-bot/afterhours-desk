@@ -296,6 +296,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Service area' }), el('dd', { text: d.area || '—' }),
           el('dt', { text: 'Office / on-call' }), el('dd', { class: 'mono', text: `${pretty(d.office)} / ${pretty(d.oncall)}` }),
           el('dt', { text: 'Fees' }), el('dd', { text: [d.fee, d.afterfee].filter(Boolean).join(' · ') || '—' }),
+          el('dt', { text: 'Business' }), el('dd', { text: d.trade === 'other' ? (d.businessType || 'Other') : ({ hvac: 'HVAC', plumbing: 'Plumbing', electrical: 'Electrical', roofing: 'Roofing', pest: 'Pest control', appliance: 'Appliance repair', garage: 'Garage doors', locksmith: 'Locksmith', cleaning: 'Cleaning', landscaping: 'Landscaping & tree care' })[d.trade || 'hvac'] }),
           el('dt', { text: 'Country' }), el('dd', { text: ({ US: 'United States', CA: 'Canada', GB: 'United Kingdom', AU: 'Australia', AE: 'United Arab Emirates', SA: 'Saudi Arabia', IN: 'India' })[d.country || 'US'] || d.country }),
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
           el('dt', { text: 'Free month' }), el('dd', {}, trialTools(c, trial)),

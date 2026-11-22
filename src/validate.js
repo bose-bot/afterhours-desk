@@ -10,13 +10,14 @@ const DAY_SETS = {
 
 import { normalizePhone as toE164, usAreaCode, countryOfPhone } from './phone.js';
 import { COUNTRIES } from './countries.js';
+import { TRADES } from './trades.js';
 
 // What a full number looks like in each country, for error messages.
 const EXAMPLE = { US: '(513) 555-0142', CA: '(416) 555-0142', GB: '07700 900123', AU: '0412 345 678', AE: '050 123 4567', SA: '050 123 4567', IN: '98765 43210' };
 
 const LIMITS = {
   business: 80, contact: 80, email: 120, phone: 30, area: 300, hours: 120, office: 30, oncall: 30, gasline: 30,
-  fee: 120, afterfee: 120, services: 400, notes: 1500, calendar: 60, plan: 40,
+  fee: 120, afterfee: 120, services: 400, notes: 1500, calendar: 60, plan: 40, businessType: 80,
 };
 
 const str = (v) => (typeof v === 'string' ? v : v == null ? '' : String(v)).trim();
@@ -44,7 +45,11 @@ export function validateSignup(body, { defaultAreaCode = '', timezone = 'America
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.email)) errors.email = 'Enter a valid email address.';
   v.email = v.email.toLowerCase();
 
-  // US unless the shop picked India or typed a +91 number.
+  // The kind of business: HVAC unless another trade was picked. "Other" says what it does in a few words.
+  v.trade = TRADES[str(b.trade).toLowerCase()] ? str(b.trade).toLowerCase() : 'hvac';
+  if (v.trade === 'other' && !v.businessType) errors.businessType = 'Tell us what your business does, like "dental clinic" or "auto repair shop".';
+  if (v.trade !== 'other') delete v.businessType;
+
   // The country the shop picked, or the one its +number belongs to, or the US.
   const picked = str(b.country).toUpperCase();
   const fromPhone = str(b.phone).startsWith('+') ? countryOfPhone(toE164(b.phone)) : '';
