@@ -8,6 +8,7 @@ import { ensureSecrets } from './secrets.js';
 import { recoverCalls } from './recover.js';
 import { runMorningReports } from './report.js';
 import { runTrials } from './trial.js';
+import { runMonthlyResults, runQuoteFollowUps } from './growth.js';
 
 // Node's default listens on IPv6 and IPv4 where available (falls back to IPv4 only). Override with HOST.
 const listen = (app, cb) => (process.env.HOST ? app.listen(config.port, process.env.HOST, cb) : app.listen(config.port, cb));
@@ -55,6 +56,10 @@ if (problems.length) {
     setTimeout(trials, 60_000).unref();
     setInterval(trials, 60 * 60_000).unref();
   }
+  // Monthly results on the 1st, and 3-day quote follow-up texts. Hourly.
+  const growth = () => Promise.all([runMonthlyResults({ db, mailer, config }), runQuoteFollowUps({ db, config })]).catch((e) => console.error(`[growth] ${e.message}`));
+  setTimeout(growth, 90_000).unref();
+  setInterval(growth, 60 * 60_000).unref();
   server = listen(app, () => {
     console.log(`${config.brandName} running at ${config.publicUrl} on port ${config.port} (${config.provisionMode} setup, max ${config.maxClients} clients, email: ${mailer.provider})`);
     if (!mailer.enabled) console.warn('Email is off: set RESEND_API_KEY and MAIL_FROM to send welcome emails and call summaries.');

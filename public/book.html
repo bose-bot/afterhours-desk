@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Book a visit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&display=swap">
+<style>
+:root{
+  --bg:#0D1621;--surface:#132131;--surface-2:#192B3E;--fg:#E9EFF3;--muted:#9AABB9;--line:#263B51;
+  --heat:#FF8A3D;--on-heat:#1C0D02;--cool:#5CC8FF;--crit:#FF9488;--ok:#74E0A9;
+  --display:'Archivo','Segoe UI',system-ui,sans-serif;color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#F4F6F8;--surface:#FFFFFF;--surface-2:#EEF2F6;--fg:#0E1A22;--muted:#506270;--line:#D5DEE6;--heat:#E2661A;--on-heat:#FFFFFF;--cool:#1E6AAB;--crit:#C2412F;--ok:#1C8A55;color-scheme:light}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--display);font-size:16px;line-height:1.5;min-height:100vh;
+  padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px))}
+main{max-width:620px;margin:0 auto;padding-block:28px 64px;display:flex;flex-direction:column;gap:22px}
+h1{margin:0;font-size:clamp(28px,7.5vw,40px);font-weight:900;letter-spacing:-.02em;line-height:1.05;font-variation-settings:'wdth' 112;text-wrap:balance}
+h2{margin:0 0 10px;font-size:18px;font-weight:800;display:flex;align-items:center;gap:10px}
+h2 .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--heat);color:var(--on-heat);font-size:14px;font-weight:900}
+p{margin:0}.muted{color:var(--muted)}
+.kicker{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--heat)}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.facts span{font-size:13.5px;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:4px 12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.days{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.dayb{flex:none;scroll-snap-align:start;appearance:none;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;border-radius:14px;padding:8px 12px;cursor:pointer;text-align:center;min-width:72px}
+.dayb b{display:block;font-size:20px;font-weight:900;line-height:1.1;font-variant-numeric:tabular-nums}
+.dayb small{display:block;font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.dayb[aria-pressed="true"]{border-color:var(--heat);background:var(--surface-2)}
+.times{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:12px}
+.time{appearance:none;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-weight:700;border-radius:12px;min-height:48px;padding:8px 12px;cursor:pointer}
+.time[aria-pressed="true"]{background:var(--heat);color:var(--on-heat);border-color:var(--heat)}
+.dayb:focus-visible,.time:focus-visible,.btn:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--cool);outline-offset:2px}
+form{display:flex;flex-direction:column;gap:12px}
+label{display:flex;flex-direction:column;gap:5px;font-size:14px;font-weight:700;color:var(--muted)}
+input,textarea{min-height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:16px;padding:10px 12px;width:100%}
+textarea{min-height:90px;resize:vertical}
+.ferr{color:var(--crit);font-size:13px;font-weight:700}
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:800;font-size:17px;min-height:54px;border-radius:999px;padding:12px 22px;background:var(--heat);color:var(--on-heat);width:100%}
+.btn:disabled{opacity:.6;cursor:default}
+.chosen{font-weight:800;color:var(--ok)}
+.done{text-align:center;padding:28px 18px}
+.done .tick{width:64px;height:64px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;background:var(--ok);color:var(--bg);font-size:34px;font-weight:900}
+.call{display:inline-flex;align-items:center;gap:8px;color:var(--cool);font-weight:800;text-decoration:none}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.foot{text-align:center;font-size:12.5px;color:var(--muted)}
+.foot a{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <header id="head">
+    <p class="kicker" id="kicker">Book online</p>
+    <h1 id="biz">Loading…</h1>
+    <div class="facts" id="facts"></div>
+  </header>
+
+  <div class="card" id="unavailable" hidden><p id="unavailableMsg"></p></div>
+
+  <section id="flow" hidden>
+    <div class="card">
+      <h2><span class="n">1</span>Pick a time</h2>
+      <div class="days" id="days" role="group" aria-label="Day"></div>
+      <div class="times" id="times" role="group" aria-label="Time window"></div>
+      <p class="muted" id="noSlots" hidden style="margin-top:8px">No open times in the next two weeks online. Please call us and we'll fit you in.</p>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2><span class="n">2</span>Your details</h2>
+      <form id="form" novalidate>
+        <label>Your name<input name="name" autocomplete="name" required maxlength="120"><span class="ferr" data-for="name"></span></label>
+        <label>Phone number<input name="phone" type="tel" autocomplete="tel" required maxlength="40"><span class="ferr" data-for="phone"></span></label>
+        <label id="addrWrap">Address for the visit<input name="address" autocomplete="street-address" maxlength="300"><span class="ferr" data-for="address"></span></label>
+        <label>What do you need?<textarea name="issue" maxlength="500" required></textarea><span class="ferr" data-for="issue"></span></label>
+        <div class="hp" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+        <p class="muted" id="chosen">Pick a time above.</p>
+        <button class="btn" type="submit" id="submit" disabled>Book it</button>
+        <span class="ferr" id="formErr" role="alert"></span>
+      </form>
+    </div>
+  </section>
+
+  <section class="card done" id="done" hidden aria-live="polite">
+    <div class="tick" aria-hidden="true">✓</div>
+    <h1 style="font-size:28px">You're booked</h1>
+    <p class="muted" id="doneMsg" style="margin-top:8px"></p>
+    <p style="margin-top:16px" id="doneCall"></p>
+  </section>
+
+  <p class="foot">Safety first: if you smell gas or anyone is in danger, leave and call your local emergency number.<br>Booking by <a href="/">AfterHours Desk</a> · <a href="/privacy">Privacy</a></p>
+</main>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const slug = decodeURIComponent(location.pathname.split('/').filter(Boolean).pop() || '');
+  let data = null, day = null, chosen = null;
+  const el = (tag, attrs = {}, ...kids) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'text') n.textContent = v; else if (k === 'class') n.className = v; else if (k.startsWith('on')) n.addEventListener(k.slice(2), v); else if (v != null) n.setAttribute(k, v); } n.append(...kids.filter(Boolean)); return n; };
+  const fmt = (iso, o) => new Intl.DateTimeFormat(data.locale || 'en-US', { timeZone: data.timezone, ...o }).format(new Date(iso));
+  const dayKey = (iso) => fmt(iso, { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const timeOf = (iso) => fmt(iso, { hour: 'numeric', minute: '2-digit' }).replace(':00', '');
+
+  async function load() {
+    try {
+      const r = await fetch(`/api/book/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'This booking page is not available.');
+      data = j; render();
+    } catch (e) {
+      $('#biz').textContent = 'Booking unavailable'; $('#unavailableMsg').textContent = e.message; $('#unavailable').hidden = false;
+    }
+  }
+  function render() {
+    document.title = `Book ${data.bookWhat.replace(/^an? /, 'a ')} · ${data.business}`;
+    $('#biz').textContent = data.business;
+    $('#kicker').textContent = data.trade ? `${data.trade} · Book online` : 'Book online';
+    $('#facts').replaceChildren(...[data.area && `Serving ${data.area}`, data.fee && `Visit fee: ${data.fee}`].filter(Boolean).map((t) => el('span', { text: t })));
+    if (data.services) $('#facts').append(el('span', { text: data.services }));
+    $('#addrWrap').hidden = !data.needsAddress;
+    $('#form').elements.phone.placeholder = data.phoneExample || '';
+    $('#submit').textContent = `Book ${data.bookWhat}`;
+    $('#flow').hidden = false;
+    renderSlots();
+  }
+  function renderSlots() {
+    const groups = new Map();
+    for (const s of data.slots) { const k = dayKey(s.slot_start); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); }
+    $('#noSlots').hidden = groups.size > 0;
+    if (!groups.has(day)) day = groups.keys().next().value || null;
+    $('#days').replaceChildren(...[...groups.entries()].map(([k, list]) => el('button', { type: 'button', class: 'dayb', 'aria-pressed': String(k === day), onclick: () => { day = k; renderSlots(); } },
+      el('small', { text: fmt(list[0].slot_start, { weekday: 'short' }) }), el('b', { text: fmt(list[0].slot_start, { day: 'numeric' }) }), el('small', { text: fmt(list[0].slot_start, { month: 'short' }) }))));
+    $('#times').replaceChildren(...(groups.get(day) || []).map((s) => {
+      const end = s.label.split(' to ').pop();
+      return el('button', { type: 'button', class: 'time', 'aria-pressed': String(chosen?.slot_start === s.slot_start), onclick: () => { chosen = s; renderSlots(); updateChosen(); } },
+        document.createTextNode(`${timeOf(s.slot_start)} – ${end}`));
+    }));
+    updateChosen();
+  }
+  function updateChosen() {
+    if (chosen && !data.slots.some((s) => s.slot_start === chosen.slot_start)) chosen = null;
+    $('#chosen').replaceChildren(chosen ? el('span', { class: 'chosen', text: chosen.label }) : document.createTextNode('Pick a time above.'));
+    $('#submit').disabled = !chosen;
+  }
+  $('#form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    if (!chosen) return;
+    const f = ev.currentTarget, btn = $('#submit');
+    document.querySelectorAll('.ferr').forEach((n) => { n.textContent = ''; });
+    btn.disabled = true; btn.textContent = 'Booking…';
+    const body = { slot_start: chosen.slot_start, name: f.elements.name.value, phone: f.elements.phone.value, address: f.elements.address.value, issue: f.elements.issue.value, website: f.elements.website.value };
+    try {
+      const r = await fetch(`/api/book/${encodeURIComponent(slug)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (r.status === 400 && j.errors) { for (const [k, v] of Object.entries(j.errors)) { const n = document.querySelector(`.ferr[data-for="${k}"]`); if (n) n.textContent = v; } throw new Error('Check the details above.'); }
+      if (r.status === 409) { if (j.slots) data.slots = j.slots; chosen = null; renderSlots(); throw new Error(j.error); }
+      if (!r.ok) throw new Error(j.error || 'Something went wrong. Please call us instead.');
+      $('#flow').hidden = true; $('#done').hidden = false;
+      $('#doneMsg').textContent = `${data.business} will see you ${j.window}. We'll call when we're on the way.`;
+      if (data.phoneE164) $('#doneCall').replaceChildren(document.createTextNode('Need to change it? '), el('a', { class: 'call', href: `tel:${data.phoneE164}`, text: `Call ${data.phone}` }));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      $('#formErr').textContent = e.message; btn.disabled = !chosen; btn.textContent = `Book ${data.bookWhat}`;
+    }
+  });
+  load();
+})();
+</script>
+</body>
+</html>

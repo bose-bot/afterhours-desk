@@ -551,6 +551,14 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
         <div><b>2</b><p class="muted">Get your AI phone number by email.</p></div>
         <div><b>3</b><p class="muted">Call it, then forward your missed calls to it.</p></div>
       </div>
+      <div class="lookup" style="margin-top:28px;padding-top:20px;border-top:1px solid rgba(255,255,255,.1)">
+        <p class="muted" style="font-weight:700">Already signed up? Get your dashboard link by email.</p>
+        <form id="lookupForm" novalidate style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <input id="lookupEmail" type="email" autocomplete="email" placeholder="you@yourshop.com" aria-label="Your email" style="flex:1 1 200px;min-width:0;min-height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.25);color:inherit;font:inherit;padding:8px 12px">
+          <button class="btn ghost" type="submit">Email my link</button>
+        </form>
+        <p class="muted" id="lookupMsg" role="status" style="margin-top:8px;font-size:14px"></p>
+      </div>
     </div>
     <div class="form-shell">
   <form class="fs" id="signupForm" novalidate>
@@ -1075,6 +1083,18 @@ canvas.mini-wave{width:100%;height:46px;display:block;margin:6px 0 12px}
     }
   });
 })();
+<script>
+document.getElementById('lookupForm')?.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const msg = document.getElementById('lookupMsg'), btn = ev.currentTarget.querySelector('button');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/find-dashboard', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('lookupEmail').value }) });
+    const j = await r.json().catch(() => ({}));
+    msg.textContent = j.message || j.error || 'Something went wrong. Try again.';
+  } catch { msg.textContent = 'Something went wrong. Try again.'; }
+  btn.disabled = false;
+});
 </script>
 </body>
 </html>

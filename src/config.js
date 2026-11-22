@@ -82,6 +82,7 @@ export function loadConfig(env = process.env) {
     // Hard cap so a flood of fake sign-ups can't run up your Vapi bill.
     maxClients: int(env.MAX_CLIENTS, 10),
     signupsPerIpPerHour: int(env.SIGNUPS_PER_IP_PER_HOUR, 3),
+    bookingsPerIpPerHour: int(env.BOOKINGS_PER_IP_PER_HOUR, 10),
 
     timezone: env.DEFAULT_TIMEZONE || 'America/New_York',
 

@@ -9,6 +9,8 @@ import { countryOf } from './countries.js';
 import { notify } from './notify.js';
 
 const URGENCIES = ['Emergency', 'Priority', 'Routine'];
+// Where Vapi puts the recording, depending on payload version.
+export const recordingOf = (m) => m?.recordingUrl || m?.artifact?.recordingUrl || m?.artifact?.recording?.mono?.combinedUrl || m?.stereoRecordingUrl || m?.call?.artifact?.recordingUrl || '';
 const clip = (v, n = 300) => (v == null ? '' : String(v)).trim().slice(0, n);
 
 function safeEqual(a, b) {
@@ -155,7 +157,7 @@ export function createWebhookHandler(deps) {
       // If the recovery job already handled this call (the report came very late), don't email twice.
       const seen = await db.getCall(callId);
       const cost = Number.isFinite(message.cost) ? message.cost : (Number.isFinite(message.call?.cost) ? message.call.cost : null);
-      await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80), durationS: callDuration(message), cost, source: 'webhook',
+      await db.saveCall({ id: callId, clientId: client.id, callerPhone, summary, transcript, endedReason: clip(message.endedReason, 80), durationS: callDuration(message), cost, source: 'webhook', recordingUrl: recordingOf(message),
         startedAt: message.startedAt || message.call?.startedAt || (Number.isFinite(callDuration(message)) ? new Date(Date.now() - callDuration(message) * 1000).toISOString() : null) });
 
       if (!seen) {

@@ -134,8 +134,9 @@ export function validateSettings(body, client) {
   }
   v.schedule = s;
 
+  if ('avgJob' in b) { const raw = str(b.avgJob).replace(/[^\d.]/g, ''); const n = raw ? Number(raw) : 0; if (Number.isFinite(n) && n >= 0 && n <= 1_000_000) v.avgJob = n || ''; else errors.avgJob = 'Enter a number, like 350.'; }
   if ('smsAlerts' in b) { if (['all', 'urgent', 'off'].includes(str(b.smsAlerts))) v.smsAlerts = str(b.smsAlerts); else errors.smsAlerts = 'Pick when to text you.'; }
-  for (const k of ['textCallers', 'textBack']) if (k in b) v[k] = b[k] === true || b[k] === 'true' || b[k] === 'on';
+  for (const k of ['textCallers', 'textBack', 'onlineBooking', 'quoteFollowUp']) if (k in b) v[k] = b[k] === true || b[k] === 'true' || b[k] === 'on';
   if ('language' in b) { const l = C.languages.find((x) => x.code === str(b.language)); if (l) v.language = l.code; else if (C.languages.length) errors.language = 'Pick a language.'; }
 
   if (Object.keys(errors).length) return { ok: false, errors };

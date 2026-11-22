@@ -12,6 +12,8 @@ import { billingProvider, stripeCheckout, stripeSignatureValid, stripeEventUpdat
 import { countryOf } from './countries.js';
 import { recoverCalls } from './recover.js';
 import { calendarFeed } from './calendar.js';
+import { registerBookingPage, ensureSlug, bookingUrl, bookingOn } from './booking.js';
+import { resultsView, defaultCampaignText, campaignAudience, sendCampaign } from './growth.js';
 import { prettyPhone } from './phone.js';
 import { trialView, withTrial, pauseForPayment, resumeIfPaused } from './trial.js';
 import { ownerKey, ownerKeyValid, ownerUrl } from './owner.js';
@@ -82,12 +84,28 @@ export function createApp(deps) {
   app.locals.deps = deps; // tests swap in fake outside APIs here
 
   const allowSignup = rateLimiter(config.signupsPerIpPerHour);
+  const allowLookup = rateLimiter(5);
 
   // Uptime monitors should watch this: it fails if the database can't be reached, not just if the process is up.
   app.get('/healthz', async (_req, res) => {
     try { await db.ping(); res.json({ ok: true }); }
     catch (e) { logger.error(`[health] ${e.message}`); res.status(503).json({ ok: false, error: 'database unreachable' }); }
   });
+
+  // ---- Lost dashboard link: we email it to the address on file. The reply never says whether the email exists.
+  app.post('/api/find-dashboard', wrap(async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 120);
+    const same = { ok: true, message: "If that email has a shop with us, we've sent its dashboard link. Check your inbox and spam folder." };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ error: 'Enter the email you signed up with.' });
+    if (!allowLookup(req.ip)) return res.status(429).json({ error: 'Too many tries from this network. Try again in an hour.' });
+    const shops = (await db.listClients()).filter((c) => c.email === email && c.status !== 'demo');
+    if (shops.length) {
+      const links = shops.map((c) => `${c.business}: ${ownerUrl(config, c)}`).join('\n');
+      runInBackground(() => deps.mailer.send({ to: email, subject: `Your ${config.brandName} dashboard link`,
+        text: `Here's your private dashboard link:\n\n${links}\n\nKeep it to yourself: anyone with the link can see your calls and bookings. If you didn't ask for this, you can ignore this email.\n\n${config.brandName}` }));
+    }
+    res.json(same);
+  }));
 
   // ---- Public sign-up ----
   app.post('/api/signup', wrap(async (req, res) => {
@@ -132,6 +150,7 @@ export function createApp(deps) {
 
   // ---- Vapi webhook ----
   app.post('/api/vapi/webhook', wrap(createWebhookHandler(Object.assign(Object.create(deps), { runInBackground }))));
+  registerBookingPage(app, Object.assign(Object.create(deps), { runInBackground }));
 
   // ---- Admin (Bearer ADMIN_TOKEN) ----
   const admin = express.Router();
@@ -264,7 +283,7 @@ export function createApp(deps) {
     res.sendFile(join(PUBLIC_DIR, 'my.html'));
   });
   app.get('/api/owner/:id', ownerGate, wrap(async (req, res) => {
-    const c = req.client, cutoff = Date.now() - 45 * 86_400_000;
+    const c = req.client.status === 'active' ? await ensureSlug(db, req.client) : req.client, cutoff = Date.now() - 45 * 86_400_000;
     const recent = (row) => Date.parse(row.created_at) >= cutoff;
     const all = await db.listBookings(c.id);
     const items = all.filter((b) => recent(b) || (b.kind === 'booking' && Date.parse(b.slot_start) >= Date.now()));
@@ -273,7 +292,7 @@ export function createApp(deps) {
     const calendar = all.filter((b) => b.kind === 'booking' && Date.parse(b.slot_start) >= calSince && !items.includes(b));
     const calls = (await db.listCalls(c.id)).filter(recent).slice(0, 100).map((k) => ({
       id: k.id, caller_phone: k.caller_phone, summary: k.summary, transcript: (k.transcript || '').slice(0, 20_000),
-      duration_s: k.duration_s, created_at: k.created_at, late: k.source === 'recovered',
+      duration_s: k.duration_s, created_at: k.created_at, late: k.source === 'recovered', recording: k.recording_url || null,
     }));
     res.set('Cache-Control', 'no-store');
     res.json({
@@ -285,6 +304,8 @@ export function createApp(deps) {
       items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error, review_sent_at }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error, review_sent_at })),
       calls,
       settings: settingsView(c),
+      bookingPage: { url: bookingUrl(config, c), on: bookingOn(c) },
+      results: resultsView(c, await db.listCalls(c.id), all),
       calendar: calendar.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at })),
       windowHours: c.details?.schedule?.windowHours || 2,
       calendarFeed: `${config.publicUrl || ''}/api/owner/${encodeURIComponent(c.id)}/calendar.ics?key=${encodeURIComponent(ownerKey(config, c.id))}`,
@@ -301,6 +322,7 @@ export function createApp(deps) {
       office: d.office || '', oncall: d.oncall || '', gasline: d.gasline || '', workDays: daysKey, dayStart: s.start || '08:00', dayEnd: s.end || '17:00',
       capacity: s.capacity || 1, windowHours: s.windowHours || 2, closed: s.closed || [],
       ...textSettings(c), smsAlerts: textSettings(c).alerts, textCallers: textSettings(c).confirmCallers, smsAvailable: smsReady(config),
+      onlineBooking: d.onlineBooking !== false, quoteFollowUp: d.quoteFollowUp !== false, avgJob: d.avgJob || '',
       language: d.language || '', languages: C.languages.map((l) => ({ code: l.code, label: l.label })), country: C.code,
     };
   }
@@ -323,6 +345,22 @@ export function createApp(deps) {
     }
     deps.mailer.send({ to: c.email, subject: 'We got your request to close your account', text: `Hi ${c.contact},\n\nWe got your request to close your ${config.brandName} account for ${c.business} and delete its data. We'll confirm by email once it's done, usually within 2 business days. Until then, your receptionist keeps answering.\n\n${config.brandName}` }).catch(() => {});
     res.json({ ok: true });
+  }));
+  // Tune-up campaign: a text to past customers with the booking link. Preview first, then send.
+  app.get('/api/owner/:id/campaign', ownerGate, wrap(async (req, res) => {
+    const c = await ensureSlug(db, req.client);
+    res.json({ audience: (await campaignAudience(db, c)).length, text: defaultCampaignText(config, c), smsAvailable: smsReady(config) });
+  }));
+  app.post('/api/owner/:id/campaign', ownerGate, wrap(async (req, res) => {
+    const c = await ensureSlug(db, req.client);
+    const message = String(req.body?.message || '').trim();
+    if (message.length < 20 || message.length > 480) return res.status(400).json({ error: 'Keep the message between 20 and 480 characters.' });
+    if (!/stop/i.test(message)) return res.status(400).json({ error: 'Include "Reply STOP to opt out" so customers can unsubscribe.' });
+    if (!smsReady(config)) return res.status(501).json({ error: 'Text messages are not set up on this server yet.' });
+    const total = (await campaignAudience(db, c)).length;
+    if (!total) return res.status(409).json({ error: 'No past customers to text right now. Everyone was texted in the last 90 days, or nobody has booked yet.' });
+    runInBackground(async () => { const r = await sendCampaign(deps, c, message); logger.log?.(`[campaign] ${c.business}: ${r.sent}/${r.total}`); });
+    res.json({ ok: true, total: Math.min(total, 500) });
   }));
   // Text the customer a review link after a finished visit (once).
   app.post('/api/owner/:id/items/:itemId/review', ownerGate, wrap(async (req, res) => {

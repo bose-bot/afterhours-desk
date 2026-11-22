@@ -146,6 +146,30 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       <div class="tile"><b id="nMinutes">0</b><span id="minLabel">minutes this month</span><div class="meter" id="meter"><i id="meterBar" style="width:0"></i></div></div>
     </div>
 
+    <section style="margin-top:28px" id="bookSection" hidden>
+      <h2>Your booking page</h2>
+      <div class="tool">
+        <p class="note">Customers book a visit online, in the same open times your receptionist offers. Put this link on Google, Facebook, your website and your van.</p>
+        <div class="row"><input id="bookUrl" readonly aria-label="Your booking page link"><button class="btn ghost" type="button" id="bookCopy">Copy</button><a class="btn ghost" id="bookOpen" target="_blank" rel="noopener">Open</a></div>
+      </div>
+    </section>
+
+    <section style="margin-top:28px" id="campSection" hidden>
+      <h2>Bring back past customers</h2>
+      <div class="tool">
+        <p class="note" id="campNote"></p>
+        <textarea id="campText" maxlength="480" rows="4" aria-label="Campaign message" style="min-height:96px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;padding:10px 12px;width:100%;resize:vertical"></textarea>
+        <p class="note">{name} becomes each customer's first name. Nobody gets more than one campaign text every 90 days.</p>
+        <div class="row"><button class="btn call" type="button" id="campSend">Send</button></div>
+      </div>
+    </section>
+
+    <section style="margin-top:28px" id="resultsSection" hidden>
+      <h2>Results <span class="count" id="resMonth"></span></h2>
+      <div class="tiles" id="resTiles"></div>
+      <p class="note" id="resNote" style="font-size:13.5px;color:var(--muted)"></p>
+    </section>
+
     <section style="margin-top:28px" aria-labelledby="calTitle">
       <h2 id="calTitle">Calendar <span class="count" id="calCount"></span></h2>
       <div class="cal">
@@ -236,6 +260,9 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
           <label>Number to text<input name="alertPhone" type="tel"></label>
           <label class="check full"><input type="checkbox" name="textCallers">Text callers a confirmation when they book</label>
           <label class="check full"><input type="checkbox" name="textBack">Text callers who hang up before talking</label>
+          <label class="check full"><input type="checkbox" name="quoteFollowUp">Follow up by text 3 days after someone asks for a price</label>
+          <label class="check full"><input type="checkbox" name="onlineBooking">Let customers book online from my booking page</label>
+          <label class="full">Average job value, for your results report<input name="avgJob" inputmode="decimal" maxlength="12" placeholder="e.g. 350"></label>
           <label class="full">Google review link (for "Ask for a review")<input name="reviewUrl" type="url" placeholder="https://g.page/r/…"></label>
         </fieldset>
         <div class="row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -313,7 +340,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       if (e.status === 404) {
         $('#shop').textContent = 'Link not recognized';
         $('#sub').textContent = '';
-        $('#error').textContent = 'This dashboard link is not valid. Open the "Open your dashboard" button in your latest email from AfterHours Desk.';
+        $('#error').replaceChildren(document.createTextNode('This dashboard link is not valid. '), el('a', { href: '/#signup', style: 'color:var(--cool);font-weight:700', text: 'Get your link by email' }), document.createTextNode(', or open "Open your dashboard" in your latest email from AfterHours Desk.'));
         $('#error').hidden = false; $('#app').hidden = true;
         return;
       }
@@ -514,6 +541,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     f.elements.alertPhone.value = st.alertPhone || '';
     f.elements.oncall.value = pretty(st.oncall); f.elements.office.value = pretty(st.office); f.elements.gasline.value = pretty(st.gasline); f.elements.alertPhone.value = pretty(st.alertPhone);
     f.elements.textCallers.checked = Boolean(st.textCallers); f.elements.textBack.checked = Boolean(st.textBack);
+    f.elements.quoteFollowUp.checked = st.quoteFollowUp !== false; f.elements.onlineBooking.checked = st.onlineBooking !== false; f.elements.avgJob.value = st.avgJob || '';
     $('#btWrap').hidden = st.trade !== 'other';
     $('#gasWrap').hidden = st.country === 'US';
     $('#langWrap').hidden = (st.languages || []).length < 2;
@@ -545,12 +573,14 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       .filter((k) => !(k === 'businessType' && $('#btWrap').hidden)).map((k) => [k, f.elements[k].value]));
     body.capacity = Number(f.elements.capacity.value); body.windowHours = Number(f.elements.windowHours.value);
     body.textCallers = f.elements.textCallers.checked; body.textBack = f.elements.textBack.checked; body.closed = offs;
+    body.quoteFollowUp = f.elements.quoteFollowUp.checked; body.onlineBooking = f.elements.onlineBooking.checked; body.avgJob = f.elements.avgJob.value;
     if (!$('#gasWrap').hidden) body.gasline = f.elements.gasline.value;
     if (!$('#langWrap').hidden) body.language = f.elements.language.value;
     btn.disabled = true; btn.textContent = 'Saving…'; $('#setErr').textContent = '';
     try {
       const r = await api('POST', `/api/owner/${encodeURIComponent(id)}/settings`, body);
       data.settings = r.settings; fillSettings(r.settings); renderCalendar();
+      if (data.bookingPage) { data.bookingPage.on = r.settings.onlineBooking; renderBookingPage(); }
       toast(r.live ? 'Saved. Your receptionist is using the new details now.' : 'Saved.');
     } catch (e) {
       $('#setErr').textContent = e.message;
@@ -565,8 +595,47 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     catch (e) { btn.disabled = false; toast(e.message); }
   });
 
+  function renderBookingPage() {
+    const bp = data.bookingPage || {};
+    $('#bookSection').hidden = !bp.url || !bp.on;
+    $('#bookUrl').value = bp.url || ''; $('#bookOpen').href = bp.url || '#';
+  }
+  $('#bookCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('#bookUrl').value); toast('Booking link copied.'); } catch { $('#bookUrl').select(); } });
+  // This month's results, with last month beside it.
+  function renderResults() {
+    const r = data.results; if (!r) { $('#resultsSection').hidden = true; return; }
+    $('#resultsSection').hidden = false;
+    const m = r.thisMonth, money = (n) => new Intl.NumberFormat(locale, { style: 'currency', currency: r.currency, maximumFractionDigits: 0 }).format(n);
+    $('#resMonth').textContent = r.label;
+    const tile = (n, label, hot) => el('div', { class: `tile${hot ? ' hot' : ''}` }, el('b', { text: String(n) }), el('span', { text: label }));
+    $('#resTiles').replaceChildren(tile(m.calls, 'calls answered'), tile(m.afterHours, 'after hours or busy'), tile(m.booked, m.booked === 1 ? 'job booked' : 'jobs booked'),
+      tile(m.value ? money(m.value) : '—', m.value ? 'in booked work' : 'set your average job value', Boolean(m.value)));
+    $('#resNote').textContent = r.lastMonth ? `Last month: ${r.lastMonth.calls} calls, ${r.lastMonth.booked} jobs booked${r.lastMonth.value ? `, about ${money(r.lastMonth.value)}` : ''}.` : '';
+  }
+
+  // Tune-up campaign: loaded once, sent with a second tap to confirm.
+  let camp = null;
+  async function loadCampaign() {
+    try { camp = await api('GET', `/api/owner/${encodeURIComponent(id)}/campaign`); } catch { return; }
+    $('#campSection').hidden = false;
+    if (!$('#campText').value) $('#campText').value = camp.text;
+    $('#campNote').textContent = !camp.smsAvailable ? 'Text a seasonal offer to everyone who has booked with you. This switches on once text messages are set up for your account.'
+      : camp.audience ? `Text a seasonal offer, with your booking link, to ${camp.audience} past ${camp.audience === 1 ? 'customer' : 'customers'}.` : 'No past customers to text yet. Everyone who books becomes part of your list.';
+    $('#campSend').disabled = !camp.smsAvailable || !camp.audience;
+    $('#campSend').textContent = camp.audience ? `Send to ${camp.audience}` : 'Send';
+  }
+  $('#campSend').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = `Tap again to text ${camp.audience} ${camp.audience === 1 ? 'person' : 'people'}`; return; }
+    btn.disabled = true; btn.dataset.armed = '';
+    try { const r = await api('POST', `/api/owner/${encodeURIComponent(id)}/campaign`, { message: $('#campText').value }); toast(`Sending to ${r.total} customers now.`); btn.textContent = 'Sent'; }
+    catch (e) { toast(e.message); btn.disabled = false; btn.textContent = `Send to ${camp.audience}`; }
+  });
+
   function render() {
     const { shop, usage, items, calls } = data;
+    if (!camp && !render.campLoading) { render.campLoading = true; loadCampaign(); }
+    renderBookingPage(); renderResults();
     if (data.settings && !settingsDirty) fillSettings(data.settings);
     document.title = `${shop.business} · AfterHours Desk`;
     $('#shop').textContent = shop.business;
@@ -598,6 +667,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
     $('#calls').replaceChildren(...(calls.length ? calls.slice(0, 30).map((c) => el('article', { class: 'call-row' },
       el('header', {}, el('b', { text: pretty(c.caller_phone) || 'Unknown caller' }), el('span', { text: [when(c.created_at), dur(c.duration_s)].filter(Boolean).join(' · ') })),
       c.late ? el('p', { class: 'late', text: 'This report arrived late. If they wanted a booking, call to confirm.' }) : null,
+      c.recording ? el('audio', { controls: '', preload: 'none', src: c.recording, style: 'width:100%;margin-top:8px', 'aria-label': `Recording of the call from ${pretty(c.caller_phone) || 'unknown caller'}` }) : null,
       el('p', { text: c.summary || 'No summary was recorded for this call.' }),
       c.transcript ? el('details', {}, el('summary', { text: 'Read the conversation' }), el('pre', { text: c.transcript })) : null))
       : [el('p', { class: 'empty', text: 'No calls yet. Call your receptionist yourself to see how a call shows up here.' })]));

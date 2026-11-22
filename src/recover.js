@@ -1,3 +1,4 @@
+import { recordingOf } from './webhook.js';
 // Recovers call reports that never reached this server: if it was asleep, restarting or down when a
 // call ended, Vapi's end-of-call report is lost. Vapi still has the call, so we fetch recent calls
 // for every live shop and handle any we haven't seen, exactly once.
@@ -47,7 +48,7 @@ export async function recoverCalls(deps) {
         id: c.id, clientId: client.id, callerPhone, summary,
         transcript: clip(c.artifact?.transcript ?? c.transcript, 50_000), endedReason: clip(c.endedReason, 80),
         durationS: callDuration(c), cost: Number.isFinite(c.cost) ? c.cost : null, source: 'recovered',
-        createdAt: c.startedAt || c.createdAt || c.endedAt, startedAt: c.startedAt || null,
+        createdAt: c.startedAt || c.createdAt || c.endedAt, startedAt: c.startedAt || null, recordingUrl: recordingOf(c),
       });
       recovered++;
       // Bookings made during the call are already saved if the tool calls got through.

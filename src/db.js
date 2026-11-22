@@ -78,6 +78,7 @@ const MIGRATIONS = [
   'DROP INDEX IF EXISTS bookings_slot',
   'CREATE UNIQUE INDEX IF NOT EXISTS bookings_seat ON bookings(client_id, slot_start, seat)',
   'ALTER TABLE bookings ADD COLUMN review_sent_at TEXT',
+  'ALTER TABLE calls ADD COLUMN recording_url TEXT',  // the call recording at Vapi, for the owner to play back
 ];
 
 // ---- Drivers: all(sql, params) -> rows, run(sql, params), close(). SQL uses ? placeholders. ----
@@ -259,14 +260,15 @@ export async function openDb(target) {
       return (r?.changes ?? r?.rowCount ?? 0) > 0;
     },
 
-    async saveCall({ id, clientId, callerPhone, summary, transcript, endedReason, durationS, cost, source, createdAt, startedAt }) {
-      await d.run(`INSERT INTO calls (id, client_id, caller_phone, summary, transcript, ended_reason, duration_s, cost, source, created_at, started_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    async saveCall({ id, clientId, callerPhone, summary, transcript, endedReason, durationS, cost, source, createdAt, startedAt, recordingUrl }) {
+      await d.run(`INSERT INTO calls (id, client_id, caller_phone, summary, transcript, ended_reason, duration_s, cost, source, created_at, started_at, recording_url)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT (id) DO UPDATE SET client_id = excluded.client_id, caller_phone = excluded.caller_phone,
                      summary = excluded.summary, transcript = excluded.transcript, ended_reason = excluded.ended_reason,
-                     duration_s = excluded.duration_s, cost = excluded.cost`,
+                     duration_s = excluded.duration_s, cost = excluded.cost, recording_url = COALESCE(excluded.recording_url, calls.recording_url)`,
         [id, clientId ?? null, callerPhone ?? null, summary ?? null, transcript ?? null, endedReason ?? null,
-         Number.isFinite(durationS) ? Math.round(durationS) : null, Number.isFinite(cost) ? cost : null, source ?? 'webhook', createdAt ?? now(), startedAt ?? null]);
+         Number.isFinite(durationS) ? Math.round(durationS) : null, Number.isFinite(cost) ? cost : null, source ?? 'webhook', createdAt ?? now(), startedAt ?? null,
+         /^https:\/\//.test(recordingUrl || '') ? String(recordingUrl).slice(0, 1000) : null]);
     },
 
     async getCall(id) {
