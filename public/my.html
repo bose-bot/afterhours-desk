@@ -103,6 +103,27 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
 .new{display:inline-block;font-size:11px;font-weight:900;letter-spacing:.06em;color:var(--on-heat);background:var(--cool);border-radius:99px;padding:1px 8px;margin-left:8px;vertical-align:.15em}
 .subscribe{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:12px}
 .subscribe p{flex:1 1 100%;font-size:13.5px;color:var(--muted)}
+.set{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:18px}
+.set fieldset{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.set fieldset{grid-template-columns:minmax(0,1fr)}}
+.set legend{font-weight:800;font-size:15px;margin-bottom:8px;padding:0}
+.set label{display:flex;flex-direction:column;gap:5px;font-size:13.5px;color:var(--muted);font-weight:600;min-width:0}
+.set label.full{grid-column:1/-1}
+.set label.check{flex-direction:row;align-items:center;gap:10px;color:var(--fg);font-size:15px}
+.set input,.set select,.set textarea{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:15px;padding:8px 12px;min-width:0;width:100%}
+.set textarea{min-height:80px;resize:vertical}
+.set input[type=checkbox]{width:22px;min-height:22px;height:22px;accent-color:var(--heat)}
+.set input:focus-visible,.set select:focus-visible,.set textarea:focus-visible{outline:3px solid var(--cool);outline-offset:1px}
+.set .ferr{color:var(--crit);font-size:13px;font-weight:700}
+.set .hintline{font-size:13px;color:var(--muted);grid-column:1/-1}
+.offs{grid-column:1/-1;display:flex;flex-direction:column;gap:8px}
+.off{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:14.5px}
+.off span{flex:1;min-width:0}
+.off button{appearance:none;border:0;background:none;color:var(--crit);font:inherit;font-weight:700;cursor:pointer;padding:6px}
+.addoff{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:8px;align-items:end}
+@media (max-width:620px){.addoff{grid-template-columns:1fr 1fr}.addoff .btn{grid-column:1/-1}}
+.day.closed{background:repeating-linear-gradient(135deg,var(--bg),var(--bg) 6px,rgba(255,255,255,.035) 6px,rgba(255,255,255,.035) 12px)}
+.closedtag{font-size:11px;color:var(--muted);font-weight:700}
 .err{background:var(--surface);border:1px solid var(--crit);border-radius:16px;padding:20px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -169,6 +190,61 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       <div class="tool" id="tool"></div>
     </section>
 
+    <section style="margin-top:28px" id="settingsSection">
+      <h2>Settings</h2>
+      <form class="set" id="settings" novalidate>
+        <fieldset>
+          <legend>Your business</legend>
+          <label class="full" id="btWrap" hidden>What your business does<input name="businessType" maxlength="80"></label>
+          <label class="full">Services you offer<input name="services" maxlength="400"></label>
+          <label class="full">Areas you serve<input name="area" maxlength="300"></label>
+          <label>Service call fee<input name="fee" maxlength="120"></label>
+          <label>After-hours fee<input name="afterfee" maxlength="120"></label>
+          <label class="full">Anything else callers should know<textarea name="notes" maxlength="1500"></textarea></label>
+        </fieldset>
+        <fieldset>
+          <legend>Hours and bookings</legend>
+          <label>Working days<select name="workDays"><option value="mon-fri">Monday to Friday</option><option value="mon-sat">Monday to Saturday</option><option value="sun-thu">Sunday to Thursday</option><option value="sat-thu">Saturday to Thursday</option><option value="every-day">Every day</option></select></label>
+          <label>Visit window<select name="windowHours"><option value="1">1 hour</option><option value="2">2 hours</option><option value="3">3 hours</option><option value="4">4 hours</option></select></label>
+          <label>Opens<input type="time" name="dayStart"></label>
+          <label>Closes<input type="time" name="dayEnd"></label>
+          <label class="full">Jobs you can take in the same window<input type="number" name="capacity" min="1" max="20" inputmode="numeric"></label>
+          <p class="hintline">With 3 technicians, set 3: the receptionist books up to 3 visits per window before offering the next one.</p>
+        </fieldset>
+        <fieldset>
+          <legend>Days off</legend>
+          <p class="hintline">Holidays, vacations or fully booked days. The receptionist won't offer times on these days.</p>
+          <div class="offs" id="offs"></div>
+          <div class="addoff">
+            <label>From<input type="date" id="offFrom"></label>
+            <label>To<input type="date" id="offTo"></label>
+            <label>Note<input id="offNote" maxlength="80" placeholder="e.g. Christmas"></label>
+            <button class="btn ghost" type="button" id="offAdd">Add</button>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Phone numbers</legend>
+          <label>On-call number for emergencies<input name="oncall" type="tel"></label>
+          <label>Office number<input name="office" type="tel"></label>
+          <label class="full" id="gasWrap" hidden>Gas emergency number<input name="gasline" type="tel"></label>
+          <label class="full" id="langWrap" hidden>Callers speak<select name="language"></select></label>
+        </fieldset>
+        <fieldset>
+          <legend>Text messages</legend>
+          <p class="hintline" id="smsNote"></p>
+          <label>Text me<select name="smsAlerts"><option value="urgent">Emergencies and urgent calls</option><option value="all">Every booking and message</option><option value="off">Never (email only)</option></select></label>
+          <label>Number to text<input name="alertPhone" type="tel"></label>
+          <label class="check full"><input type="checkbox" name="textCallers">Text callers a confirmation when they book</label>
+          <label class="check full"><input type="checkbox" name="textBack">Text callers who hang up before talking</label>
+          <label class="full">Google review link (for "Ask for a review")<input name="reviewUrl" type="url" placeholder="https://g.page/r/…"></label>
+        </fieldset>
+        <div class="row" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn call" type="submit" id="saveSettings">Save changes</button>
+          <span class="ferr" id="setErr" role="alert"></span>
+        </div>
+      </form>
+    </section>
+
     <section style="margin-top:28px">
       <h2>Recent calls <span class="count" id="cCount"></span></h2>
       <div class="list" id="calls"></div>
@@ -178,6 +254,14 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       <details id="doneBox"><summary id="doneSummary">Done</summary><div class="list" id="done" style="margin-top:10px"></div></details>
     </section>
 
+    <section style="margin-top:28px">
+      <details><summary>Close my account</summary>
+        <div class="tool" style="margin-top:10px">
+          <p class="note">We'll stop your receptionist, release your number and delete your calls, bookings and messages. Your receptionist keeps answering until we confirm by email.</p>
+          <div class="row"><button class="btn ghost" type="button" id="closeBtn" style="color:var(--crit)">Ask to close my account</button></div>
+        </div>
+      </details>
+    </section>
     <p class="foot" id="foot" style="margin-top:32px"></p>
   </div>
 </main>
@@ -215,7 +299,7 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store',
     });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { const e = new Error(j.error || `Something went wrong (${r.status}). Try again in a minute.`); e.status = r.status; throw e; }
+    if (!r.ok) { const e = new Error(j.error || (j.errors ? Object.values(j.errors).join(' ') : '') || `Something went wrong (${r.status}). Try again in a minute.`); e.status = r.status; throw e; }
     return j;
   }
 
@@ -265,7 +349,15 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       isVisit && !done ? syncLine(b) : null,
       el('div', { class: 'actions' },
         b.caller_phone && !done ? el('a', { class: 'btn call', href: `tel:${b.caller_phone}`, text: `Call ${b.caller_name ? b.caller_name.split(' ')[0] : 'back'}` }) : null,
-        el('button', { class: 'btn ghost', type: 'button', text: done ? 'Move back' : (isVisit ? 'Mark confirmed' : 'Mark done'), onclick: () => setDone(b, !done) })));
+        el('button', { class: 'btn ghost', type: 'button', text: done ? 'Move back' : (isVisit ? 'Mark confirmed' : 'Mark done'), onclick: () => setDone(b, !done) }),
+        isVisit && data.settings?.reviewUrl && Date.parse(b.slot_start) < Date.now() && b.caller_phone
+          ? el('button', { class: 'btn ghost', type: 'button', text: b.review_sent_at ? 'Review asked ✓' : 'Ask for a review', disabled: b.review_sent_at ? '' : null, onclick: (ev) => askReview(ev, b) }) : null));
+  }
+  async function askReview(ev, b) {
+    const btn = ev.currentTarget; btn.disabled = true; btn.textContent = 'Sending…';
+    try { await api('POST', `/api/owner/${encodeURIComponent(id)}/items/${encodeURIComponent(b.id)}/review`); b.review_sent_at = new Date().toISOString(); toast(`Review request sent to ${b.caller_name || 'the customer'}.`); }
+    catch (e) { toast(e.message); }
+    render();
   }
 
   // Where this booking stands in Jobber or Housecall Pro, with a Retry when it didn't get there.
@@ -379,10 +471,11 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
       const list = entries.get(k) || [];
       const label = new Intl.DateTimeFormat(locale, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }).format(d);
       const visits = list.filter((b) => b.kind === 'booking').length, cbs = list.length - visits;
-      const cell = el('button', { type: 'button', role: 'gridcell', class: ['day', k.slice(0, 7) !== calMonth ? 'out' : '', k === today ? 'today' : '', k === calSel ? 'sel' : ''].filter(Boolean).join(' '),
+      const off = (data.settings?.closed || []).find((c) => c.from <= k && k <= (c.to || c.from));
+      const cell = el('button', { type: 'button', role: 'gridcell', class: ['day', off ? 'closed' : '', k.slice(0, 7) !== calMonth ? 'out' : '', k === today ? 'today' : '', k === calSel ? 'sel' : ''].filter(Boolean).join(' '),
         'aria-label': `${label}${visits ? `, ${visits} visit${visits > 1 ? 's' : ''}` : ''}${cbs ? `, ${cbs} call back${cbs > 1 ? 's' : ''}` : ''}`, 'aria-pressed': String(k === calSel),
         onclick: () => { calSel = k; if (k.slice(0, 7) !== calMonth) calMonth = k.slice(0, 7); renderCalendar(); } },
-        el('span', { class: 'n', text: String(d.getUTCDate()) }));
+        el('span', { class: 'n', text: String(d.getUTCDate()) }), off ? el('span', { class: 'closedtag', text: off.note || 'Closed' }) : null);
       list.slice(0, 2).forEach((b) => cell.append(el('span', { class: ['chip', b.kind === 'booking' ? '' : `cb ${b.urgency || ''}`, b.done_at ? 'done' : ''].filter(Boolean).join(' '),
         text: b.kind === 'booking' ? `${timeOf(b.slot_start)} ${b.caller_name || 'Visit'}` : `☎ ${b.caller_name || 'Call back'}` })));
       if (list.length > 2) cell.append(el('span', { class: 'more', text: `+${list.length - 2} more` }));
@@ -410,8 +503,71 @@ pre{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size
   $('#calToday').addEventListener('click', () => { calSel = dayKey(Date.now()); calMonth = calSel.slice(0, 7); renderCalendar(); });
   $('#subCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(data.calendarFeed); toast('Calendar link copied. Paste it in your calendar app under "Subscribe" or "From URL".'); } catch { toast('Copy failed. Press and hold the Apple or Outlook button to copy the link.'); } });
 
+  // ---- Settings form: filled from the server once, then only when the owner isn't editing it.
+  let offs = [], settingsDirty = false;
+  const F = () => $('#settings');
+  function fillSettings(st) {
+    const f = F();
+    for (const k of ['businessType', 'services', 'area', 'fee', 'afterfee', 'notes', 'workDays', 'windowHours', 'dayStart', 'dayEnd', 'capacity', 'oncall', 'office', 'gasline', 'smsAlerts', 'reviewUrl']) {
+      if (f.elements[k]) f.elements[k].value = st[k] ?? '';
+    }
+    f.elements.alertPhone.value = st.alertPhone || '';
+    f.elements.oncall.value = pretty(st.oncall); f.elements.office.value = pretty(st.office); f.elements.gasline.value = pretty(st.gasline); f.elements.alertPhone.value = pretty(st.alertPhone);
+    f.elements.textCallers.checked = Boolean(st.textCallers); f.elements.textBack.checked = Boolean(st.textBack);
+    $('#btWrap').hidden = st.trade !== 'other';
+    $('#gasWrap').hidden = st.country === 'US';
+    $('#langWrap').hidden = (st.languages || []).length < 2;
+    f.elements.language.replaceChildren(...(st.languages || []).map((l) => new Option(l.label, l.code)));
+    if (st.language) f.elements.language.value = st.language;
+    $('#smsNote').textContent = st.smsAvailable ? '' : 'Text messages switch on once they are set up for your account. Your choices are saved now.';
+    offs = (st.closed || []).map((c) => ({ ...c })); renderOffs();
+    settingsDirty = false;
+  }
+  const fmtDay = (ymd) => new Intl.DateTimeFormat(locale, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${ymd}T12:00:00Z`));
+  function renderOffs() {
+    $('#offs').replaceChildren(...(offs.length ? offs.map((c, i) => el('div', { class: 'off' },
+      el('span', { text: `${fmtDay(c.from)}${c.to && c.to !== c.from ? ` to ${fmtDay(c.to)}` : ''}${c.note ? ` · ${c.note}` : ''}` }),
+      el('button', { type: 'button', text: 'Remove', 'aria-label': `Remove day off ${c.from}`, onclick: () => { offs.splice(i, 1); settingsDirty = true; renderOffs(); } })))
+      : [el('p', { class: 'hintline', text: 'No days off coming up.' })]));
+  }
+  $('#offAdd').addEventListener('click', () => {
+    const from = $('#offFrom').value, to = $('#offTo').value || from;
+    if (!from) { $('#setErr').textContent = 'Pick the first day off.'; return; }
+    if (to < from) { $('#setErr').textContent = 'The last day off must be on or after the first.'; return; }
+    offs.push({ from, to, note: $('#offNote').value.trim() }); offs.sort((a, b) => a.from.localeCompare(b.from));
+    $('#offFrom').value = ''; $('#offTo').value = ''; $('#offNote').value = ''; $('#setErr').textContent = ''; settingsDirty = true; renderOffs();
+  });
+  F().addEventListener('input', () => { settingsDirty = true; });
+  F().addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = F(), btn = $('#saveSettings');
+    const body = Object.fromEntries(['businessType', 'services', 'area', 'fee', 'afterfee', 'notes', 'workDays', 'dayStart', 'dayEnd', 'oncall', 'office', 'smsAlerts', 'alertPhone', 'reviewUrl']
+      .filter((k) => !(k === 'businessType' && $('#btWrap').hidden)).map((k) => [k, f.elements[k].value]));
+    body.capacity = Number(f.elements.capacity.value); body.windowHours = Number(f.elements.windowHours.value);
+    body.textCallers = f.elements.textCallers.checked; body.textBack = f.elements.textBack.checked; body.closed = offs;
+    if (!$('#gasWrap').hidden) body.gasline = f.elements.gasline.value;
+    if (!$('#langWrap').hidden) body.language = f.elements.language.value;
+    btn.disabled = true; btn.textContent = 'Saving…'; $('#setErr').textContent = '';
+    try {
+      const r = await api('POST', `/api/owner/${encodeURIComponent(id)}/settings`, body);
+      data.settings = r.settings; fillSettings(r.settings); renderCalendar();
+      toast(r.live ? 'Saved. Your receptionist is using the new details now.' : 'Saved.');
+    } catch (e) {
+      $('#setErr').textContent = e.message;
+    } finally { btn.disabled = false; btn.textContent = 'Save changes'; }
+  });
+
+  $('#closeBtn').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget;
+    if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'Tap again to confirm'; return; }
+    btn.disabled = true;
+    try { await api('POST', `/api/owner/${encodeURIComponent(id)}/close`, {}); btn.textContent = 'Request sent'; toast("We got your request. We'll email you when it's done."); }
+    catch (e) { btn.disabled = false; toast(e.message); }
+  });
+
   function render() {
     const { shop, usage, items, calls } = data;
+    if (data.settings && !settingsDirty) fillSettings(data.settings);
     document.title = `${shop.business} · AfterHours Desk`;
     $('#shop').textContent = shop.business;
     $('#sub').replaceChildren(document.createTextNode('Your AI receptionist: '), el('b', { text: pretty(shop.phoneNumber) || 'number coming soon' }), shop.status === 'active' ? el('span', { class: 'live', text: 'Live' }) : null);

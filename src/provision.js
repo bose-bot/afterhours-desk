@@ -30,7 +30,8 @@ export function assistantBody(config, client) {
   // Outside the US: speech recognition for the shop's caller language (Hindi-English, Gulf Arabic,
   // English-French…), and that language's voice when one is set. US shops keep Vapi's defaults.
   const cc = countryOf(client).code, lang = languageOf(client);
-  if (cc !== 'US' && lang) body.transcriber = cc === 'IN' ? { ...config.india.transcriber } : { ...lang.transcriber };
+  // US shops on plain English keep Vapi's default speech recognition, as before.
+  if (lang && (cc !== 'US' || lang.code !== 'en')) body.transcriber = cc === 'IN' ? { ...config.india.transcriber } : { ...lang.transcriber };
   const langVoice = lang && config.voiceFor ? config.voiceFor(lang.code) : null;
   if (langVoice) body.voice = langVoice;
   else if (config.vapi.voiceProvider && config.vapi.voiceId) body.voice = { provider: config.vapi.voiceProvider, voiceId: config.vapi.voiceId };

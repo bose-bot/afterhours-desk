@@ -22,7 +22,10 @@ export const COUNTRIES = {
     outsideArea: 'suggest they search for a local HVAC provider',
     defaultServices: 'furnace and AC repair, maintenance tune-ups, new system estimates',
     collect: 'service address with city or ZIP, and confirm it is in the service area; what is going on (furnace, heat pump, central AC, boiler or thermostat, age of unit, what they notice)',
-    language: '', languages: [], examples: 'us',
+    language: '', examples: 'us',
+    // English, or English and Spanish on the same call.
+    languages: [ENGLISH, { code: 'en-es', label: 'English and Spanish', transcriber: { provider: 'deepgram', model: 'nova-3', language: 'multi' },
+      rule: 'LANGUAGE\nCallers may speak English or Spanish. Reply in the language the caller uses, and keep using it for the rest of the call. Read phone numbers and times in that language.\n\n' }],
   },
   CA: {
     code: 'CA', name: 'Canada', dial: '1', timezone: 'America/Toronto', currency: 'CAD', locale: 'en-CA',

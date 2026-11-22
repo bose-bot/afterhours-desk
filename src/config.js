@@ -37,6 +37,8 @@ export function loadConfig(env = process.env) {
 
     // Twilio, for US numbers once Vapi's 10 free numbers are used up. NUMBER_SOURCE=twilio uses it for every shop.
     twilio: { accountSid: env.TWILIO_ACCOUNT_SID || '', authToken: env.TWILIO_AUTH_TOKEN || '', always: env.NUMBER_SOURCE === 'twilio' },
+    // Text messages go out through Twilio: from TWILIO_SMS_FROM, or a Messaging Service (TWILIO_MESSAGING_SERVICE_SID).
+    sms: { from: env.TWILIO_SMS_FROM || '', messagingServiceSid: env.TWILIO_MESSAGING_SERVICE_SID || '' },
 
     // Per-country settings, named with the two-letter code: VAPI_SIP_CREDENTIAL_AE (a licensed local
     // provider's SIP trunk in Vapi), TWILIO_BUNDLE_SID_GB / TWILIO_ADDRESS_SID_GB (Twilio's approved

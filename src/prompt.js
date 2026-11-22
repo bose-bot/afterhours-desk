@@ -65,6 +65,9 @@ Then call check_availability, offer the caller two of the open windows, and call
 After booking, say: "You're booked for [day], [window]. ${hvac ? "The tech will call when they're on the way." : T.onWay} Anything else I can help with?"
 If no times work, call take_message and promise a callback.
 
+CHANGING OR CANCELLING A VISIT
+If the caller wants to cancel or move a visit they already booked, ask for the phone number it was booked under and call find_booking. Read back the visit you found and confirm it is the right one. To cancel, ask if they'd like to rebook instead; if not, call cancel_appointment. To move it, call check_availability, offer two windows, then call reschedule_appointment with the booking_id and the new slot_start. If no visit is found, take a message.
+
 OUTSIDE THE SERVICE AREA
 Politely explain you don't currently serve that area and ${T.outsideArea}.
 
@@ -126,6 +129,33 @@ export function toolDefinitions(webhookUrl, { transferTo = '' } = {}) {
           },
           required: ['slot_start', 'name', 'phone', 'issue'],
         },
+      },
+    },
+    {
+      type: 'function',
+      server,
+      function: {
+        name: 'find_booking',
+        description: "Finds the caller's upcoming visits by the phone number they were booked under. Call before cancelling or moving a visit.",
+        parameters: { type: 'object', properties: { phone: { type: 'string', description: 'The number the visit was booked under.' } }, required: ['phone'] },
+      },
+    },
+    {
+      type: 'function',
+      server,
+      function: {
+        name: 'cancel_appointment',
+        description: 'Cancels a visit returned by find_booking, after the caller confirms.',
+        parameters: { type: 'object', properties: { booking_id: { type: 'string' }, phone: { type: 'string' }, reason: { type: 'string' } }, required: ['booking_id', 'phone'] },
+      },
+    },
+    {
+      type: 'function',
+      server,
+      function: {
+        name: 'reschedule_appointment',
+        description: 'Moves a visit returned by find_booking to a new window returned by check_availability.',
+        parameters: { type: 'object', properties: { booking_id: { type: 'string' }, phone: { type: 'string' }, slot_start: { type: 'string' } }, required: ['booking_id', 'phone', 'slot_start'] },
       },
     },
     {

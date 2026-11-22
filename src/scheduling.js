@@ -36,10 +36,17 @@ function label(start, end, timeZone) {
 /**
  * Lists appointment windows from now on.
  * schedule: { days: [0-6], start: "08:00", end: "17:00", windowHours: 2, timezone }
- * booked: Set of ISO start times already taken.
+ * booked: Map of ISO start time -> bookings in that window (a Set of full windows also works).
+ * schedule.capacity: jobs the shop can take in one window (default 1).
+ * schedule.closed: days off, as [{ from: 'YYYY-MM-DD', to: 'YYYY-MM-DD', note }] in the shop's own dates.
  */
-export function openSlots(schedule, { now = new Date(), booked = new Set(), daysAhead = 7, limit = 6, leadMinutes = 60 } = {}) {
+export function isClosed(schedule, ymd) {
+  return (schedule.closed || []).some((c) => c && c.from <= ymd && ymd <= (c.to || c.from));
+}
+export function openSlots(schedule, { now = new Date(), booked = new Map(), daysAhead = 7, limit = 6, leadMinutes = 60 } = {}) {
   const { days, start, end, windowHours = 2, timezone } = schedule;
+  const capacity = Math.max(1, Number(schedule.capacity) || 1);
+  const full = (iso) => (booked instanceof Map ? (booked.get(iso) || 0) >= capacity : booked.has(iso));
   const [sh, sm] = start.split(':').map(Number);
   const [eh, em] = end.split(':').map(Number);
   const earliest = now.getTime() + leadMinutes * 60_000;
@@ -51,13 +58,14 @@ export function openSlots(schedule, { now = new Date(), booked = new Set(), days
     const noon = zonedToUtc(today.y, today.m, today.d, 12, 0, timezone).getTime() + offset * 86_400_000;
     const p = zonedParts(new Date(noon), timezone);
     if (!days.includes(p.weekday)) continue;
+    if (isClosed(schedule, `${p.y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`)) continue;
 
     const dayEndMin = eh * 60 + em;
     for (let m = sh * 60 + sm; m + windowHours * 60 <= dayEndMin && out.length < limit; m += windowHours * 60) {
       const s = zonedToUtc(p.y, p.m, p.d, Math.floor(m / 60), m % 60, timezone);
       const e = new Date(s.getTime() + windowHours * 3_600_000);
       const iso = s.toISOString();
-      if (s.getTime() < earliest || booked.has(iso)) continue;
+      if (s.getTime() < earliest || full(iso)) continue;
       out.push({ slot_start: iso, label: label(s, e, timezone) });
     }
   }

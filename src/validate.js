@@ -86,3 +86,58 @@ export function validateSignup(body, { defaultAreaCode = '', timezone = 'America
   if (Object.keys(errors).length) return { ok: false, errors };
   return { ok: true, value: v };
 }
+
+/**
+ * Checks the settings an owner changes from their dashboard. Only these fields can change; anything
+ * else in the body is ignored. Returns { ok, value: details-to-merge } or { ok: false, errors }.
+ */
+export function validateSettings(body, client) {
+  const b = body || {}, d = client.details || {}, errors = {}, v = {};
+  const C = COUNTRIES[d.country] || COUNTRIES.US;
+  const text = { area: 300, services: 400, fee: 120, afterfee: 120, notes: 1500, businessType: 80, reviewUrl: 300 };
+  for (const [k, max] of Object.entries(text)) {
+    if (!(k in b)) continue;
+    const val = str(b[k]);
+    if (val.length > max) errors[k] = `Keep this under ${max} characters.`;
+    v[k] = val.slice(0, max);
+  }
+  if ('reviewUrl' in v && v.reviewUrl && !/^https:\/\/\S+$/.test(v.reviewUrl)) errors.reviewUrl = 'Paste the full review link, starting with https://';
+  if (v.businessType !== undefined && d.trade !== 'other') delete v.businessType;
+
+  for (const k of ['office', 'oncall', 'gasline', 'alertPhone']) {
+    if (!(k in b)) continue;
+    const raw = str(b[k]);
+    if (!raw) { v[k] = ''; continue; }
+    const n = normalizePhone(raw, d.country || 'US');
+    if (!n) errors[k] = `Enter a full phone number, like ${EXAMPLE[d.country || 'US']}.`; else v[k] = n;
+  }
+
+  // Hours, jobs per window and window length all live in the schedule.
+  const s = { ...(d.schedule || {}) };
+  if ('workDays' in b) { if (DAY_SETS[str(b.workDays)]) s.days = DAY_SETS[str(b.workDays)]; else errors.workDays = 'Pick working days.'; }
+  if ('dayStart' in b) { if (timeOk(str(b.dayStart))) s.start = str(b.dayStart); else errors.dayStart = 'Use a time like 08:00.'; }
+  if ('dayEnd' in b) { if (timeOk(str(b.dayEnd))) s.end = str(b.dayEnd); else errors.dayEnd = 'Use a time like 17:00.'; }
+  if (s.start && s.end && s.end <= s.start) errors.dayEnd = 'Closing time must be after opening time.';
+  if ('capacity' in b) { const n = Number(b.capacity); if (Number.isInteger(n) && n >= 1 && n <= 20) s.capacity = n; else errors.capacity = 'Between 1 and 20 jobs.'; }
+  if ('windowHours' in b) { const n = Number(b.windowHours); if ([1, 2, 3, 4].includes(n)) s.windowHours = n; else errors.windowHours = 'Pick 1, 2, 3 or 4 hours.'; }
+  if ('closed' in b) {
+    const list = Array.isArray(b.closed) ? b.closed : [];
+    const ymd = /^\d{4}-\d{2}-\d{2}$/;
+    const today = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const clean = [];
+    for (const c of list.slice(0, 60)) {
+      const from = str(c?.from), to = str(c?.to) || from;
+      if (!ymd.test(from) || !ymd.test(to) || to < from) { errors.closed = 'Each day off needs a start date, and an end date on or after it.'; break; }
+      if (to >= today) clean.push({ from, to, note: str(c?.note).slice(0, 80) });
+    }
+    s.closed = clean.sort((a, z) => a.from.localeCompare(z.from));
+  }
+  v.schedule = s;
+
+  if ('smsAlerts' in b) { if (['all', 'urgent', 'off'].includes(str(b.smsAlerts))) v.smsAlerts = str(b.smsAlerts); else errors.smsAlerts = 'Pick when to text you.'; }
+  for (const k of ['textCallers', 'textBack']) if (k in b) v[k] = b[k] === true || b[k] === 'true' || b[k] === 'on';
+  if ('language' in b) { const l = C.languages.find((x) => x.code === str(b.language)); if (l) v.language = l.code; else if (C.languages.length) errors.language = 'Pick a language.'; }
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+  return { ok: true, value: v };
+}

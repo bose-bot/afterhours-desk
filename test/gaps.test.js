@@ -31,7 +31,7 @@ test('with an on-call number, urgent calls can be transferred to a person', asyn
 test('without an on-call number there is no transfer, and the script never mentions one', () => {
   const client = { business: 'Solo Air', details: { schedule: { days: [1], start: '08:00', end: '17:00' } } };
   assert.doesNotMatch(buildSystemPrompt(client), /transferCall/);
-  assert.equal(toolDefinitions('https://x.example/hook').length, 3);
+  assert.equal(toolDefinitions('https://x.example/hook').length, 6);
   assert.equal(buildSystemPrompt({ ...client, status: 'demo', details: { ...client.details, oncall: '+15135550100' } }).includes('transferCall'), false, 'demo lines never transfer');
 });
 

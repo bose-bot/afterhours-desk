@@ -63,7 +63,7 @@ test('system prompt carries the safety rule and the business facts', () => {
 
 test('every tool points at the webhook', () => {
   const tools = toolDefinitions('https://x.example/hook');
-  assert.deepEqual(tools.map((t) => t.function.name), ['check_availability', 'book_appointment', 'take_message']);
+  assert.deepEqual(tools.map((t) => t.function.name), ['check_availability', 'book_appointment', 'find_booking', 'cancel_appointment', 'reschedule_appointment', 'take_message']);
   assert.ok(tools.every((t) => t.server.url === 'https://x.example/hook'));
 });
 

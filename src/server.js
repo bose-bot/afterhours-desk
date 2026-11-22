@@ -1,7 +1,8 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { validateSignup } from './validate.js';
+import { validateSignup, validateSettings } from './validate.js';
+import { notify, textSettings, smsReady } from './notify.js';
 import { provisionClient, refreshNumber, updateScript, attachIndianNumber } from './provision.js';
 import { buildDemo, currentDemo } from './demo.js';
 import { WebsiteError } from './website.js';
@@ -187,6 +188,18 @@ export function createApp(deps) {
     res.json({ client: await resumeIfPaused(c, deps, { force: true }) });
   }));
   // Sends the morning report right now, covering the last 24 hours, even if nothing came in.
+  // Deletes a shop for good: its number and receptionist at Vapi, then everything stored here about it
+  // and its callers. The body must repeat the business name, so it can't happen by accident.
+  admin.delete('/clients/:id', wrap(async (req, res) => {
+    const c = await oneClient(req, res); if (!c) return;
+    if (String(req.body?.confirm || '').trim().toLowerCase() !== c.business.trim().toLowerCase()) return res.status(400).json({ error: `Type the business name, "${c.business}", to confirm.` });
+    const problems = [];
+    if (c.vapiPhoneId) { try { await deps.vapi.deletePhoneNumber(c.vapiPhoneId); } catch (e) { problems.push(`number: ${e.message}`); } }
+    if (c.vapiAssistantId) { try { await deps.vapi.deleteAssistant(c.vapiAssistantId); } catch (e) { problems.push(`assistant: ${e.message}`); } }
+    await db.deleteClient(c.id);
+    logger.log?.(`[admin] ${req.adminName || 'admin'} deleted ${c.business} (${c.id})`);
+    res.json({ ok: true, problems });
+  }));
   admin.post('/clients/:id/send-report', wrap(async (req, res) => {
     const c = await db.getClient(req.params.id);
     if (!c) return res.status(404).json({ error: 'No client with that id.' });
@@ -269,13 +282,58 @@ export function createApp(deps) {
       billing: { provider: billingProvider(config, c), status: c.details?.billing?.manual ? 'active' : (c.details?.billing?.status || null) },
       trial: trialView(c, config),
       usage: await usageOf(c),
-      items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error })),
+      items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error, review_sent_at }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error, review_sent_at })),
       calls,
+      settings: settingsView(c),
       calendar: calendar.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at })),
       windowHours: c.details?.schedule?.windowHours || 2,
       calendarFeed: `${config.publicUrl || ''}/api/owner/${encodeURIComponent(c.id)}/calendar.ics?key=${encodeURIComponent(ownerKey(config, c.id))}`,
       integration: await integrationView(c.id),
     });
+  }));
+  // ---- Settings the owner changes themselves. Saving updates the live receptionist straight away.
+  function settingsView(c) {
+    const d = c.details || {}, s = d.schedule || {}, C = countryOf(c);
+    const daysKey = Object.entries({ 'mon-fri': [1, 2, 3, 4, 5], 'mon-sat': [1, 2, 3, 4, 5, 6], 'every-day': [0, 1, 2, 3, 4, 5, 6], 'sun-thu': [0, 1, 2, 3, 4], 'sat-thu': [0, 1, 2, 3, 4, 6] })
+      .find(([, v]) => JSON.stringify(v) === JSON.stringify(s.days))?.[0] || 'mon-fri';
+    return {
+      trade: d.trade || 'hvac', businessType: d.businessType || '', area: d.area || '', services: d.services || '', fee: d.fee || '', afterfee: d.afterfee || '', notes: d.notes || '',
+      office: d.office || '', oncall: d.oncall || '', gasline: d.gasline || '', workDays: daysKey, dayStart: s.start || '08:00', dayEnd: s.end || '17:00',
+      capacity: s.capacity || 1, windowHours: s.windowHours || 2, closed: s.closed || [],
+      ...textSettings(c), smsAlerts: textSettings(c).alerts, textCallers: textSettings(c).confirmCallers, smsAvailable: smsReady(config),
+      language: d.language || '', languages: C.languages.map((l) => ({ code: l.code, label: l.label })), country: C.code,
+    };
+  }
+  app.post('/api/owner/:id/settings', ownerGate, wrap(async (req, res) => {
+    const check = validateSettings(req.body, req.client);
+    if (!check.ok) return res.status(400).json({ errors: check.errors });
+    const c = await db.updateClient(req.client.id, { details: { ...req.client.details, ...check.value } });
+    let live = false;
+    try { live = (await updateScript(c.id, deps)).updated; }
+    catch (e) { logger.error(`[settings] script update for ${c.business}: ${e.message}`); return res.status(502).json({ error: 'Saved, but the receptionist could not be updated right now. Try saving again in a minute.', settings: settingsView(c) }); }
+    res.json({ ok: true, live, settings: settingsView(c) });
+  }));
+  // The owner asks to close their account and delete their data. You get an email and do it from the admin page.
+  app.post('/api/owner/:id/close', ownerGate, wrap(async (req, res) => {
+    const c = req.client;
+    if (!c.details?.closeRequestedAt) await db.updateClient(c.id, { details: { ...c.details, closeRequestedAt: new Date().toISOString() } });
+    if (config.mail.operatorEmail) {
+      deps.mailer.send({ to: config.mail.operatorEmail, subject: `Close account and delete data: ${c.business}`,
+        text: `${c.business} (${c.email}) asked to close their account and delete their data.${req.body?.reason ? `\n\nReason: ${String(req.body.reason).slice(0, 500)}` : ''}\n\nOn the admin page, open the shop and use Delete shop. Then cancel any subscription in Stripe or Razorpay.` }).catch(() => {});
+    }
+    deps.mailer.send({ to: c.email, subject: 'We got your request to close your account', text: `Hi ${c.contact},\n\nWe got your request to close your ${config.brandName} account for ${c.business} and delete its data. We'll confirm by email once it's done, usually within 2 business days. Until then, your receptionist keeps answering.\n\n${config.brandName}` }).catch(() => {});
+    res.json({ ok: true });
+  }));
+  // Text the customer a review link after a finished visit (once).
+  app.post('/api/owner/:id/items/:itemId/review', ownerGate, wrap(async (req, res) => {
+    const b = await db.getBooking(req.client.id, req.params.itemId);
+    if (!b || b.kind !== 'booking') return res.status(404).json({ error: 'That visit was not found.' });
+    if (!textSettings(req.client).reviewUrl) return res.status(409).json({ error: 'Add your review link in Settings first.' });
+    if (!smsReady(config)) return res.status(501).json({ error: 'Text messages are not set up on this server yet.' });
+    if (b.review_sent_at) return res.status(409).json({ error: 'A review request was already sent to this customer.' });
+    if (!(await notify(deps, req.client, 'review', { booking: b }))) return res.status(502).json({ error: "The text didn't go through. Check the customer's number." });
+    await db.markReviewSent(req.client.id, b.id);
+    res.json({ ok: true });
   }));
   // The visits as a calendar feed, for Google Calendar, Apple Calendar or Outlook. Signed like the dashboard.
   app.get('/api/owner/:id/calendar.ics', ownerGate, wrap(async (req, res) => {

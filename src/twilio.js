@@ -28,5 +28,7 @@ export function createTwilio({ accountSid, authToken, fetchImpl = globalThis.fet
     },
     buyUsNumber(opts) { return this.buyNumber({ ...opts, country: 'US' }); },
     release: (sid) => call('DELETE', `/IncomingPhoneNumbers/${encodeURIComponent(sid)}.json`),
+    // A text message, from a number or a Messaging Service (US texting needs A2P 10DLC registration in Twilio).
+    sendSms: ({ to, body, from, messagingServiceSid }) => call('POST', '/Messages.json', { To: to, Body: body.slice(0, 1500), ...(messagingServiceSid ? { MessagingServiceSid: messagingServiceSid } : { From: from }) }),
   };
 }

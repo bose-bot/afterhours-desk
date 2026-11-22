@@ -46,7 +46,7 @@ test('Update script pushes the new wording to a live receptionist', async () => 
     assert.equal(assistantId, (await t.db.getClient(id)).vapiAssistantId);
     assert.match(body.model.messages[0].content, /EXAMPLE CALLS/);
     assert.match(body.firstMessage, /^Thanks for calling Maple Row/);
-    assert.equal(body.model.tools.length, 4, 'three functions plus the on-call transfer');
+    assert.equal(body.model.tools.length, 7, 'six functions plus the on-call transfer');
   } finally { await t.close(); }
 });
 

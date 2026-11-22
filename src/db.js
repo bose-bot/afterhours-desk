@@ -36,7 +36,6 @@ const SCHEMA = [
     call_id TEXT,
     created_at TEXT NOT NULL
   )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS bookings_slot ON bookings(client_id, slot_start) WHERE kind = 'booking'`,
   `CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -71,6 +70,14 @@ const MIGRATIONS = [
   'ALTER TABLE bookings ADD COLUMN sync_status TEXT', // synced | failed, for shops with Jobber or Housecall Pro connected
   'ALTER TABLE bookings ADD COLUMN sync_ref TEXT',    // the request or job id in that tool
   'ALTER TABLE bookings ADD COLUMN sync_error TEXT',
+  // Several jobs per window: each booking takes a numbered seat in its window (0 … capacity-1), and the
+  // unique index makes two callers racing for the last seat impossible. Cancelled bookings free their seat.
+  'ALTER TABLE bookings ADD COLUMN seat INTEGER',
+  'ALTER TABLE bookings ADD COLUMN canceled_at TEXT',
+  "UPDATE bookings SET seat = 0 WHERE kind = 'booking' AND seat IS NULL AND canceled_at IS NULL",
+  'DROP INDEX IF EXISTS bookings_slot',
+  'CREATE UNIQUE INDEX IF NOT EXISTS bookings_seat ON bookings(client_id, slot_start, seat)',
+  'ALTER TABLE bookings ADD COLUMN review_sent_at TEXT',
 ];
 
 // ---- Drivers: all(sql, params) -> rows, run(sql, params), close(). SQL uses ? placeholders. ----
@@ -176,28 +183,50 @@ export async function openDb(target) {
       return api.getClient(id);
     },
 
-    // Returns null if the slot was already taken (the unique index enforces one booking per slot).
+    // A booking takes the first free seat in its window (capacity = jobs the shop can do at once).
+    // Returns null when every seat is taken, including by a caller who got there a moment earlier.
     async addBooking(b) {
       const id = randomUUID();
-      try {
-        await d.run(`INSERT INTO bookings (id, client_id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, call_id, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [id, b.clientId, b.kind, b.slotStart ?? null, b.slotLabel ?? null, b.callerName ?? null, b.callerPhone ?? null,
-           b.address ?? null, b.issue ?? null, b.urgency ?? null, b.callId ?? null, now()]);
-      } catch (e) {
-        if (d.isUniqueViolation(e)) return null;
-        throw e;
+      const seats = b.kind === 'booking' ? Math.max(1, Math.min(20, Number(b.capacity) || 1)) : 1;
+      for (let seat = 0; seat < seats; seat++) {
+        try {
+          await d.run(`INSERT INTO bookings (id, client_id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, call_id, created_at, seat)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, b.clientId, b.kind, b.slotStart ?? null, b.slotLabel ?? null, b.callerName ?? null, b.callerPhone ?? null,
+             b.address ?? null, b.issue ?? null, b.urgency ?? null, b.callId ?? null, now(), b.kind === 'booking' ? seat : null]);
+          return { id, seat, ...b };
+        } catch (e) {
+          if (!d.isUniqueViolation(e)) throw e;
+        }
       }
-      return { id, ...b };
+      return null;
     },
 
+    // How many live bookings each window has: Map of slot_start -> count.
     async bookedSlotStarts(clientId) {
-      const rows = await d.all(`SELECT slot_start FROM bookings WHERE client_id = ? AND kind = 'booking'`, [clientId]);
-      return new Set(rows.map((r) => r.slot_start));
+      const rows = await d.all(`SELECT slot_start, COUNT(*) AS n FROM bookings WHERE client_id = ? AND kind = 'booking' AND canceled_at IS NULL GROUP BY slot_start`, [clientId]);
+      return new Map(rows.map((r) => [r.slot_start, Number(r.n)]));
+    },
+
+    // Cancels a booking: it leaves the calendar and frees its seat. Scoped to the client.
+    async cancelBooking(clientId, id) {
+      const r = await d.run(`UPDATE bookings SET canceled_at = ?, seat = NULL WHERE id = ? AND client_id = ? AND kind = 'booking' AND canceled_at IS NULL`, [now(), id, clientId]);
+      return (r?.changes ?? r?.rowCount ?? 0) > 0;
+    },
+
+    async markReviewSent(clientId, id) {
+      await d.run('UPDATE bookings SET review_sent_at = ? WHERE id = ? AND client_id = ?', [now(), id, clientId]);
+    },
+
+    // Removes a shop and everything stored about it and its callers.
+    async deleteClient(clientId) {
+      for (const t of ['bookings', 'calls', 'integrations']) await d.run(`DELETE FROM ${t} WHERE client_id = ?`, [clientId]);
+      await d.run(`DELETE FROM settings WHERE key LIKE ?`, [`%:${clientId}:%`]);
+      await d.run('DELETE FROM clients WHERE id = ?', [clientId]);
     },
 
     async listBookings(clientId) {
-      return d.all('SELECT * FROM bookings WHERE client_id = ? ORDER BY created_at DESC', [clientId]);
+      return d.all('SELECT * FROM bookings WHERE client_id = ? AND canceled_at IS NULL ORDER BY created_at DESC', [clientId]);
     },
 
     async getBooking(clientId, id) {

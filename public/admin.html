@@ -244,6 +244,23 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
         el('button', { class: 'btn ghost', type: 'button', text: manual ? 'Unmark paid' : 'Mark paid (invoice)', onclick: (ev) => post(ev, 'mark-paid', { paid: !manual }, manual ? 'Unmarked' : 'Marked paid') })));
   }
 
+  // Deletes the shop, its Vapi number and receptionist, and all its stored calls and bookings.
+  function deleteTools(c) {
+    const input = el('input', { placeholder: c.business, 'aria-label': 'Type the business name to confirm', style: 'min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);padding:6px 10px;font:inherit;min-width:0;flex:1 1 180px' });
+    const btn = el('button', { class: 'btn ghost', type: 'button', text: 'Delete for good', style: 'color:var(--crit)', onclick: async () => {
+      btn.disabled = true;
+      try {
+        const r = await api('DELETE', `/api/admin/clients/${encodeURIComponent(c.id)}`, { confirm: input.value });
+        $('#appOk').textContent = `Deleted ${c.business}.${r.problems?.length ? ` Check Vapi by hand: ${r.problems.join('; ')}` : ''}`; $('#appOk').hidden = false;
+        location.hash = ''; if (typeof load === 'function') load();
+      } catch (e) { $('#appErr').textContent = e.message; $('#appErr').hidden = false; btn.disabled = false; }
+    } });
+    return el('div', {},
+      c.details?.closeRequestedAt ? el('p', { style: 'color:var(--crit);font-weight:700;margin:0 0 6px', text: `The owner asked to close this account on ${when(c.details.closeRequestedAt)}.` }) : null,
+      el('p', { class: 'hint', style: 'margin:0 0 8px', text: 'Removes the phone number, the receptionist and every call, booking and message. Cancel their subscription in Stripe or Razorpay too. Type the business name to confirm.' }),
+      el('div', { class: 'row', style: 'gap:8px;flex-wrap:wrap' }, input, btn));
+  }
+
   function attachTools(c) {
     const input = el('input', { id: `attach-${c.id}`, type: 'tel', placeholder: '+44 20 7946 0958', 'aria-label': 'Phone number with country code', style: 'min-height:42px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;padding:6px 12px' });
     const note = el('span', { class: 'hint', text: 'Get the number from the local provider (India, UAE, Saudi) or buy it in Twilio (UK, Australia) first.' });
@@ -300,6 +317,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--body);font-siz
           el('dt', { text: 'Country' }), el('dd', { text: ({ US: 'United States', CA: 'Canada', GB: 'United Kingdom', AU: 'Australia', AE: 'United Arab Emirates', SA: 'Saudi Arabia', IN: 'India' })[d.country || 'US'] || d.country }),
           el('dt', { text: 'Plan' }), el('dd', { text: d.plan || '—' }),
           el('dt', { text: 'Free month' }), el('dd', {}, trialTools(c, trial)),
+          el('dt', { text: 'Delete shop' }), el('dd', {}, deleteTools(c)),
           el('dt', { text: 'Billing' }), el('dd', { text: d.billing ? `${d.billing.status} (${d.billing.provider === 'razorpay' ? 'Razorpay' : 'Stripe'})` : 'No subscription yet' }),
           ...(c.status === 'needs_number' ? [el('dt', { text: 'Phone number' }), el('dd', {}, attachTools(c))] : []),
           el('dt', { text: 'This month' }), el('dd', {}, usageCell(usage)),
