@@ -10,8 +10,10 @@ import { usageThisMonth, busiestToday } from './usage.js';
 import { billingProvider, stripeCheckout, stripeSignatureValid, stripeEventUpdate, razorpaySubscription, razorpaySignatureValid, razorpayEventUpdate, applyBillingUpdate } from './billing.js';
 import { countryOf } from './countries.js';
 import { recoverCalls } from './recover.js';
+import { calendarFeed } from './calendar.js';
+import { prettyPhone } from './phone.js';
 import { trialView, withTrial, pauseForPayment, resumeIfPaused } from './trial.js';
-import { ownerKeyValid, ownerUrl } from './owner.js';
+import { ownerKey, ownerKeyValid, ownerUrl } from './owner.js';
 import { sendReport } from './report.js';
 import { PROVIDERS, loadIntegration, saveIntegration, syncBooking, testConnection, jobber } from './integrations/sync.js';
 import { signState, readState } from './integrations/vault.js';
@@ -251,7 +253,11 @@ export function createApp(deps) {
   app.get('/api/owner/:id', ownerGate, wrap(async (req, res) => {
     const c = req.client, cutoff = Date.now() - 45 * 86_400_000;
     const recent = (row) => Date.parse(row.created_at) >= cutoff;
-    const items = (await db.listBookings(c.id)).filter((b) => recent(b) || (b.kind === 'booking' && Date.parse(b.slot_start) >= Date.now()));
+    const all = await db.listBookings(c.id);
+    const items = all.filter((b) => recent(b) || (b.kind === 'booking' && Date.parse(b.slot_start) >= Date.now()));
+    // The calendar reaches further back: every visit from the last 6 months onward.
+    const calSince = Date.now() - 183 * 86_400_000;
+    const calendar = all.filter((b) => b.kind === 'booking' && Date.parse(b.slot_start) >= calSince && !items.includes(b));
     const calls = (await db.listCalls(c.id)).filter(recent).slice(0, 100).map((k) => ({
       id: k.id, caller_phone: k.caller_phone, summary: k.summary, transcript: (k.transcript || '').slice(0, 20_000),
       duration_s: k.duration_s, created_at: k.created_at, late: k.source === 'recovered',
@@ -265,8 +271,17 @@ export function createApp(deps) {
       usage: await usageOf(c),
       items: items.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at, sync_status, sync_error })),
       calls,
+      calendar: calendar.map(({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at }) => ({ id, kind, slot_start, slot_label, caller_name, caller_phone, address, issue, urgency, created_at, done_at })),
+      windowHours: c.details?.schedule?.windowHours || 2,
+      calendarFeed: `${config.publicUrl || ''}/api/owner/${encodeURIComponent(c.id)}/calendar.ics?key=${encodeURIComponent(ownerKey(config, c.id))}`,
       integration: await integrationView(c.id),
     });
+  }));
+  // The visits as a calendar feed, for Google Calendar, Apple Calendar or Outlook. Signed like the dashboard.
+  app.get('/api/owner/:id/calendar.ics', ownerGate, wrap(async (req, res) => {
+    const ics = calendarFeed(req.client, await db.listBookings(req.client.id), { brand: config.brandName, pretty: prettyPhone });
+    res.set({ 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'inline; filename="visits.ics"', 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' });
+    res.send(ics);
   }));
 
   // ---- Jobber / Housecall Pro: the owner connects their scheduling tool; new bookings are copied into it.
